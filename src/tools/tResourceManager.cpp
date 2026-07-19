@@ -7,7 +7,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// The emscripten/WebAssembly build links a libxml2 compiled --without-http,
+// and a browser cannot perform synchronous HTTP from C. Remote resource
+// downloading is therefore disabled; only locally cached / included resources
+// resolve. (See the myHTTPFetch stub below.)
+#ifndef __EMSCRIPTEN__
 #include <libxml/nanohttp.h>
+#endif
 
 #include "tConfiguration.h"
 #include "tDirectories.h"
@@ -22,6 +28,15 @@ tString tResourceManager::resRepoServer("http://resource.armagetronad.net/resour
 tString tResourceManager::resRepoClient("http://resource.armagetronad.net/resource/");
 static tSettingItem<tString> conf_res_repo("RESOURCE_REPOSITORY_CLIENT", tResourceManager::resRepoClient);
 
+#ifdef __EMSCRIPTEN__
+// Browser build: no synchronous HTTP available. Report the failure so callers
+// fall back to locally available resources instead of downloading.
+static int myHTTPFetch(const char *URI, const char *filename, const char *savepath)
+{
+    con << tOutput( "$resource_fetcherror_noconnect", URI );
+    return 1;
+}
+#else
 static int myHTTPFetch(const char *URI, const char *filename, const char *savepath)
 {
     void *ctxt = NULL;
@@ -66,6 +81,7 @@ static int myHTTPFetch(const char *URI, const char *filename, const char *savepa
 
     return 0;
 }
+#endif
 
 static int myFetch(const char *URIs, const char *filename, const char *savepath) {
     const char *r = URIs, *p, *n;

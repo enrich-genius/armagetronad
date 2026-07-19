@@ -803,7 +803,8 @@ bool uMenuItemString::Event(SDL_Event &e){
         return false;
     bool ret=true;
     SDL_keysym &c=e.key.keysym;
-    SDLMod mod = c.mod;
+    // keysym.mod is a Uint16 in emscripten's SDL; cast to the enum type.
+    SDLMod mod = static_cast<SDLMod>(c.mod);
     bool moveWordLeft, moveWordRight, deleteWordLeft, deleteWordRight, moveBeginning, moveEnd, killForwards;
     moveWordLeft = moveWordRight = deleteWordLeft = deleteWordRight = moveBeginning = moveEnd = killForwards = false;
 
@@ -983,7 +984,7 @@ bool uMenuItemStringWithHistory::Event(SDL_Event &e)
     // flag indicating that the event was handled
     bool ret = false;
 #ifndef DEDICATED
-    SDLMod mod = e.key.keysym.mod;
+    SDLMod mod = static_cast<SDLMod>(e.key.keysym.mod);
 
     if (e.type == SDL_KEYDOWN
             && ((e.key.keysym.sym == SDLK_UP)

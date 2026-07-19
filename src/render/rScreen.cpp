@@ -993,7 +993,11 @@ void sr_LoadDefaultConfig(){
     else if(strstr(gl_vendor,"NVIDIA")){
         // infinity , display lists and glFlush swapping work for NVIDIA
         sr_infinityPlane=true;
+#ifndef __EMSCRIPTEN__
+        // WebGL has no display lists; keep them off regardless of the reported
+        // GL vendor (which may be NVIDIA on the host machine).
         sr_useDisplayLists=rDisplayList_CAC;
+#endif
         rSysDep::swapMode_=rSysDep::rSwap_glFlush;
     }
 #ifdef MACOSX

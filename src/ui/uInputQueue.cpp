@@ -106,6 +106,11 @@ bool su_StoreSDLEvent(const SDL_Event &tEvent){
 // read and write operators for keysyms
 tRECORDING_ENUM( SDLKey );
 tRECORDING_ENUM( SDLMod );
+#ifdef __EMSCRIPTEN__
+// In emscripten's SDL the physical scancode is its own enum (SDL1.2 stored it
+// in a plain Uint8); register it so demo recording can serialise it as int.
+tRECORDING_ENUM( SDL_Scancode );
+#endif
 #endif
 
 static char const * recordingSection = "INPUT";
@@ -203,7 +208,9 @@ void EventArchiver< tRecordingBlock >::ArchiveKey( tRecordingBlock & archive, SD
         default:
             key.keysym.mod = KMOD_NONE;
             key.keysym.sym = SDLK_x;
-            key.keysym.scancode = 0;
+            // scancode is a Uint8 in SDL1.2 but an enum in emscripten's SDL;
+            // decltype keeps this assignment valid for both.
+            key.keysym.scancode = static_cast<decltype(key.keysym.scancode)>(0);
             key.keysym.unicode = '*';
         }
     }

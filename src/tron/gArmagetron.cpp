@@ -462,7 +462,13 @@ static void sg_DelayedActivation()
     Activate( sg_active );
 }
 
+#ifdef __EMSCRIPTEN__
+// emscripten's SDL uses the SDL2-style event-filter signature
+// int(void *userdata, SDL_Event *event); the body is identical.
+int filter(void *userdata, SDL_Event *tEvent){
+#else
 int filter(const SDL_Event *tEvent){
+#endif
     // recursion avoidance
     static bool recursion = false;
     if ( !recursion )
@@ -788,7 +794,11 @@ int main(int argc,char **argv){
 
             sr_glRendererInit();
 
+#ifdef __EMSCRIPTEN__
+            SDL_SetEventFilter(&filter, NULL);
+#else
             SDL_SetEventFilter(&filter);
+#endif
 
             //std::cout << "set filter\n";
 

@@ -1322,6 +1322,13 @@ static tString GeneratePrefix()
 {
     // fetch prefix as it was compiled in
     tString const & prefixCompiled = st_prefixCompiled;
+
+#ifdef __EMSCRIPTEN__
+    // In the browser the data and config directories are absolute paths into
+    // MEMFS/IDBFS, baked in at build time, and argv[0] bears no relation to any
+    // install layout. There is nothing to relocate.
+    return prefixCompiled;
+#else
     // the binary path as it was compiled in
     tString const & bindirCompiled = st_bindirCompiled;
     // and the current binary path
@@ -1372,6 +1379,7 @@ static tString GeneratePrefix()
 #endif
 
     return prefixNow;
+#endif
 }
 
 // returns the complete prefix the game was installed in (defaults to /usr/local)

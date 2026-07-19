@@ -6240,7 +6240,10 @@ eLadderLogWriter::~eLadderLogWriter() {
     // generic algorithms aren't exactly easier to understand than regular
     // code, but anyways, let's try one...
     std::list<eLadderLogWriter *> list = writers();
-    list.erase(std::find_if(list.begin(), list.end(), std::bind2nd(std::equal_to<eLadderLogWriter *>(), this)));
+    // std::bind2nd was removed in C++17; a lambda expresses the same predicate.
+    eLadderLogWriter * self = this;
+    list.erase(std::find_if(list.begin(), list.end(),
+                            [self](eLadderLogWriter * w){ return w == self; }));
 }
 
 void eLadderLogWriter::write() {

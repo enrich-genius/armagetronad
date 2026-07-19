@@ -11,6 +11,13 @@
 #define NO_SDL_GLEXT
 #include <SDL_opengl.h>
 
+#ifdef __EMSCRIPTEN__
+// emscripten's SDL_opengl.h pulls in GL/gl.h (fixed-function via
+// LEGACY_GL_EMULATION) but not GLU; declare the GLU entry points we implement
+// in webbuild/glu_shim.c.
+#include <GL/glu.h>
+#endif
+
 /*
 // include OpenGL header
 #ifdef HAVE_SDL_OPENGL_H

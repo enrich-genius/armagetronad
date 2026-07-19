@@ -33,6 +33,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tConfiguration.h"
 #include "tLocale.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 //! time structure
 struct tTime
 {
@@ -172,7 +176,15 @@ void usleep(int x)
     sleep_rest+=x;
     unsigned int r=sleep_rest/1000;
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // SDL_Delay busy-waits in wasm, which starves the browser's event loop and
+    // freezes the tab. emscripten_sleep unwinds the stack via ASYNCIFY and
+    // resumes after the delay, giving the browser a chance to composite frames
+    // and deliver input. This is the game's per-frame yield point.
+    emscripten_sleep(r);
+#else
     SDL_Delay(r);
+#endif
 #else
 
 #ifdef DEBUG
