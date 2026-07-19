@@ -438,7 +438,12 @@ static bool lowlevel_sr_InitDisplay(){
             // code compiled against SDL 1.2.10, but linked with an earlier
             // version, accessing data out of bounds.
 #if SDL_VERSION_ATLEAST(1, 2, 10)
-            if( sr_DesktopScreensizeSupported() )
+            // Only trust the detected size if it is actually usable. A zero
+            // here would propagate into SDL_SetVideoMode(0,0) below and leave
+            // us with a degenerate, unrenderable surface; keeping the 800x600
+            // default is far better than that.
+            if( sr_DesktopScreensizeSupported() &&
+                videoInfo->current_w > 0 && videoInfo->current_h > 0 )
             {
                 sr_desktopWidth  = videoInfo->current_w;
                 sr_desktopHeight = videoInfo->current_h;
