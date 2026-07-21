@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Armagetron Advanced (WebAssembly)</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0a12; color: #cfe; font-family: system-ui, sans-serif; }
+    #wrap { position: fixed; inset: 0; display: flex; flex-direction: column; }
+    #canvas { flex: 1 1 auto; display: block; width: 100%; height: 100%; background: #000; outline: none; }
+    #bar { flex: 0 0 auto; display: flex; align-items: center; gap: 1rem; padding: .4rem .8rem; background: #11111c; font-size: .8rem; }
+    #status { flex: 1 1 auto; opacity: .8; }
+    #progress { width: 220px; height: 4px; background: #1a1a2a; border-radius: 2px; overflow: hidden; }
+    #progress > div { height: 100%; width: 0; background: #4ad; transition: width .2s; }
+    button { font: inherit; padding: .25rem .8rem; border: 1px solid #345; border-radius: 4px; background: #1b2233; color: #cfe; cursor: pointer; }
+    button:hover { background: #243049; }
+    /* In fullscreen the canvas is the only thing on screen. */
+    #wrap:fullscreen #bar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="bar">
+      <div id="status">Loading…</div>
+      <div id="progress"><div id="progress-bar"></div></div>
+      <button id="fs">Fullscreen</button>
+    </div>
+  </div>
+  <script>
+    var statusEl = document.getElementById('status');
+    var barEl = document.getElementById('progress-bar');
+    var canvas = document.getElementById('canvas');
+    var wrap = document.getElementById('wrap');
+
+    // Size the canvas *backing store*, not just its CSS box. Emscripten's SDL
+    // reports these dimensions as the desktop resolution, and the game adopts
+    // them for its video mode -- a canvas left at the 300x150 default (or at 0)
+    // yields a degenerate surface and a black screen.
+    function sizeCanvas() {
+      var dpr = window.devicePixelRatio || 1;
+      var w = Math.max(640, Math.floor(canvas.clientWidth * dpr));
+      var h = Math.max(480, Math.floor(canvas.clientHeight * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+    }
+    // Must happen before the module starts so the first video mode is sane.
+    canvas.width = Math.max(640, window.innerWidth);
+    canvas.height = Math.max(480, window.innerHeight - 32);
+
+    // Belt-and-suspenders for the opaque-context fix in rScreen.cpp: force every
+    // WebGL context on this canvas to be created without an alpha channel. An
+    // alpha context composites the canvas over the (black) page using the
+    // framebuffer alpha, which the game never writes -- leaving the whole screen
+    // transparent-black regardless of what was rendered.
+    (function () {
+      var orig = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+        if (type && type.indexOf('webgl') === 0) {
+          attrs = Object.assign({}, attrs, { alpha: false });
+        }
+        return orig.call(this, type, attrs);
+      };
+    })();
+
+    var Module = {
+      canvas: canvas,
+      arguments: [],
+      preRun: [function () {
+        sizeCanvas();
+        // Persistent, writable user directory backed by IndexedDB.
+        try {
+          FS.mkdir('/persist');
+          FS.mount(IDBFS, {}, '/persist');
+          Module.addRunDependency('idbfs-load');
+          FS.syncfs(true, function () { Module.removeRunDependency('idbfs-load'); });
+        } catch (e) { console.warn('IDBFS init failed', e); }
+      }],
+      print: function (t) { console.log(t); },
+      printErr: function (t) { console.warn(t); },
+      setStatus: function (t) {
+        statusEl.textContent = t || 'Running';
+        var m = t && t.match(/([\d.]+)\/([\d.]+)/);
+        if (m) barEl.style.width = (100 * parseFloat(m[1]) / parseFloat(m[2])) + '%';
+        else if (!t) barEl.style.width = '100%';
+      }
+    };
+
+    // Fullscreen the wrapper rather than the canvas, so the browser letterboxes
+    // around it instead of stretching, and our own chrome hides via CSS.
+    document.getElementById('fs').addEventListener('click', function () {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (wrap.requestFullscreen) wrap.requestFullscreen();
+      canvas.focus();
+    });
+
+    // 'pagehide' rather than the deprecated unload events; it also fires when
+    // the tab is merely backgrounded, so settings survive being swapped out.
+    window.addEventListener('pagehide', function () {
+      try { FS.syncfs(false, function () {}); } catch (e) {}
+    });
+    canvas.addEventListener('click', function () { canvas.focus(); });
+    canvas.focus();
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

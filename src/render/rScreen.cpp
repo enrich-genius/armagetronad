@@ -498,6 +498,14 @@ static bool lowlevel_sr_InitDisplay(){
             SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, singleCD_B );
             SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, zDepth );
             SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+#ifdef __EMSCRIPTEN__
+            // Request a framebuffer with no alpha, so emscripten creates an
+            // opaque WebGL context. The game never writes meaningful alpha
+            // (on desktop GL the framebuffer alpha is ignored), but the browser
+            // composites the canvas over the page using it -- an alpha context
+            // leaves every pixel transparent and the whole screen reads black.
+            SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
+#endif
         }
 #else
         currentScreensetting.useSDL = false;
@@ -584,6 +592,9 @@ static bool lowlevel_sr_InitDisplay(){
                     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 5 );
                     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
                     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+#ifdef __EMSCRIPTEN__
+                    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
+#endif
                 }
 #endif
             }
@@ -1032,7 +1043,13 @@ void sr_ResetRenderState(bool menu){
 
     if (menu){
         glDisable(GL_DEPTH_TEST);
+#ifndef __EMSCRIPTEN__
+        // WebGL accepts only GENERATE_MIPMAP_HINT; perspective correction is
+        // unconditional there, so this call is both useless and noisy -- it
+        // raises INVALID_ENUM every frame, and once the context hits its error
+        // cap it stops reporting genuine errors entirely.
         glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+#endif
         glViewport (0, 0, GLsizei(sr_screenWidth), GLsizei(sr_screenHeight));
     }
     else{

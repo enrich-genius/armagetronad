@@ -102,3 +102,8 @@ desktop/armagetronad-link.xml
 src/.cproject
 src/.project
 src/.settings
+
+# WebAssembly port (webbuild/): keep the hand-written shell despite *.html above,
+# and ignore local wrangler deploy state.
+!webbuild/shell.html
+.wrangler/

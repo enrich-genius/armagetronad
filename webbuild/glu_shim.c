@@ -62,13 +62,61 @@ void gluLookAt(GLdouble eyeX, GLdouble eyeY, GLdouble eyeZ,
     glTranslatef((GLfloat)-eyeX, (GLfloat)-eyeY, (GLfloat)-eyeZ);
 }
 
+/*
+ * Reduce a desktop-GL texture format to the base format WebGL 1 accepts.
+ *
+ * The game asks for sized formats (GL_RGB8, GL_RGBA4, GL_LUMINANCE8_ALPHA8,
+ * ...) which desktop GL takes happily. WebGL 1 accepts only the five base
+ * formats, and additionally requires internalformat == format; anything else
+ * is rejected with INVALID_VALUE and the texture never uploads.
+ */
+static GLenum base_format(GLenum f)
+{
+    switch (f) {
+        case 3:                      /* legacy component-count spellings */
+        case GL_RGB:
+        case GL_RGB4:  case GL_RGB5:  case GL_RGB8:
+        case GL_RGB10: case GL_RGB12: case GL_RGB16:
+            return GL_RGB;
+
+        case 4:
+        case GL_RGBA:
+        case GL_RGBA2: case GL_RGBA4:  case GL_RGBA8:
+        case GL_RGBA12: case GL_RGBA16: case GL_RGB5_A1: case GL_RGB10_A2:
+            return GL_RGBA;
+
+        case GL_LUMINANCE:
+        case GL_LUMINANCE4: case GL_LUMINANCE8:
+        case GL_LUMINANCE12: case GL_LUMINANCE16:
+            return GL_LUMINANCE;
+
+        case GL_LUMINANCE_ALPHA:
+        case GL_LUMINANCE4_ALPHA4:   case GL_LUMINANCE8_ALPHA8:
+        case GL_LUMINANCE12_ALPHA12: case GL_LUMINANCE16_ALPHA16:
+            return GL_LUMINANCE_ALPHA;
+
+        case GL_ALPHA:
+        case GL_ALPHA4: case GL_ALPHA8: case GL_ALPHA12: case GL_ALPHA16:
+            return GL_ALPHA;
+
+        default:
+            return GL_RGBA;
+    }
+}
+
 GLint gluBuild2DMipmaps(GLenum target, GLint internalFormat,
                         GLsizei width, GLsizei height,
                         GLenum format, GLenum type, const void *data)
 {
+    /* The pixel data is laid out according to `format`, so that is what decides
+       the base format; the requested internal format only picks a precision,
+       which WebGL does not let us choose anyway. */
+    GLenum base = base_format(format);
+    (void)internalFormat;
+
     /* WebGL can generate mipmaps for us. Upload the base level, then ask the
        driver to build the rest. */
-    glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, data);
+    glTexImage2D(target, 0, (GLint)base, width, height, 0, base, type, data);
     glGenerateMipmap(target);
     return 0;
 }

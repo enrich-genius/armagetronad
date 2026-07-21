@@ -91,8 +91,11 @@ LDFLAGS=(
   -sGL_UNSAFE_OPTS=0
   -sASYNCIFY=1
   -sASYNCIFY_STACK_SIZE=16384
-  -sALLOW_MEMORY_GROWTH=1
-  -sINITIAL_MEMORY=268435456
+  # No ALLOW_MEMORY_GROWTH: a growable wasm memory is backed by a *resizable*
+  # ArrayBuffer in current Chrome, and TextDecoder.decode() rejects those, so
+  # every UTF8ToString -- including the path in each openat() -- throws and the
+  # game cannot read its data files. We reserve the full heap up front instead.
+  -sINITIAL_MEMORY=536870912
   -sTOTAL_STACK=16777216
   -sEXIT_RUNTIME=0
   -sEXPORTED_RUNTIME_METHODS='["callMain","FS","IDBFS"]'
