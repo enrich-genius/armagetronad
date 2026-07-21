@@ -1,2 +1,3 @@
-# Emscripten build output (regenerate with ./build.sh)
-dist/
+# The built web artifacts in dist/ ARE committed, so Cloudflare Pages can serve
+# them with no build step. Only the intermediate object files are ignored.
+dist/*.o
