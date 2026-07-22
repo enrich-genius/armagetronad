@@ -1,0 +1,3 @@
+# Serve the game at the site root. Emscripten's entry page is armagetronad.html
+# (reachable at /armagetronad); without this, "/" has no index and 404s.
+/    /armagetronad.html    200

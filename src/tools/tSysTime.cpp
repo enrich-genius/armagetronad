@@ -35,15 +35,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-// The game renders each frame to the default WebGL framebuffer and then blocks
-// in usleep(). A plain emscripten_sleep() resumes through setTimeout, and the
-// browser does NOT reliably composite a WebGL canvas that was drawn between its
-// requestAnimationFrame frames -- the finished frame sits in the buffer unseen.
-// Yielding through rAF instead lands each frame on the browser's compositing
-// heartbeat, so it is actually presented (and paces rendering to the display).
-EM_ASYNC_JS(void, se_yield_to_raf, (void), {
-    await new Promise(function (resolve) { requestAnimationFrame(resolve); });
-});
 #endif
 
 //! time structure
@@ -186,12 +177,14 @@ void usleep(int x)
     unsigned int r=sleep_rest/1000;
 #ifndef DEDICATED
 #ifdef __EMSCRIPTEN__
-    // Yield through requestAnimationFrame (see se_yield_to_raf above) so the
-    // finished frame is composited. This unwinds the stack via ASYNCIFY, lets
-    // the browser paint and deliver input, and paces the game to the display's
-    // refresh -- r is subsumed by the ~16ms rAF cadence.
-    (void)r;
-    se_yield_to_raf();
+    // emscripten_sleep unwinds the stack via ASYNCIFY and resumes after the
+    // delay, keeping the tab responsive. Crucially it must sleep for a real
+    // interval: the game's frame limiter often asks for ~0ms, and a
+    // setTimeout(0) resume loop runs hundreds of times a second, starving the
+    // browser compositor so finished frames never reach the screen. Flooring the
+    // yield at ~16ms caps the loop near the display refresh and lets each frame
+    // actually be presented.
+    emscripten_sleep( r < 16 ? 16 : r );
 #else
     SDL_Delay(r);
 #endif
