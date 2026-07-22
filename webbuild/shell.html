@@ -59,7 +59,11 @@
       var orig = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function (type, attrs) {
         if (type && type.indexOf('webgl') === 0) {
-          attrs = Object.assign({}, attrs, { alpha: false });
+          // alpha:false -> opaque compositing (see above).
+          // preserveDrawingBuffer:true -> the finished frame is retained in the
+          // buffer, so the compositor always has it to present even if the
+          // game's rAF-paced frame and the browser's composite fall out of step.
+          attrs = Object.assign({}, attrs, { alpha: false, preserveDrawingBuffer: true });
         }
         return orig.call(this, type, attrs);
       };
