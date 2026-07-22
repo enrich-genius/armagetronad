@@ -121,4 +121,11 @@ emcc "${CXXFLAGS[@]}" "${INCLUDES[@]}" "${LDFLAGS[@]}" \
   "${SOURCES[@]}" "${COBJS[@]}" \
   -o "$OUT/armagetronad.html"
 
+# Emscripten names its outputs predictably. Add a per-build query string to
+# the loader and every locateFile asset so Cloudflare/browser caches can never
+# combine a JavaScript loader from one build with wasm/data from another.
+BUILD_VERSION="$(date -u +%Y%m%d%H%M%S)"
+sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g; s/src=armagetronad\\.js/src=armagetronad.js?v=${BUILD_VERSION}/g" \
+  "$OUT/armagetronad.html"
+
 echo "Build complete: $OUT/armagetronad.html"

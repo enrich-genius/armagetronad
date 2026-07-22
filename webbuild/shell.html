@@ -63,6 +63,10 @@
     var barEl = document.getElementById('progress-bar');
     var canvas = document.getElementById('canvas');
     var wrap = document.getElementById('wrap');
+    // Replaced by build.sh. Keep the generated JS, wasm, and data package on
+    // one cache generation: mixing an old loader with a new wasm binary makes
+    // WebAssembly instantiation fail with missing imports.
+    var assetVersion = '__BUILD_VERSION__';
 
     // Size the canvas *backing store*, not just its CSS box. Emscripten's SDL
     // reports these dimensions as the desktop resolution, and the game adopts
@@ -102,6 +106,7 @@
 
     var Module = {
       canvas: canvas,
+      locateFile: function (path) { return path + '?v=' + assetVersion; },
       arguments: [],
       preRun: [function () {
         sizeCanvas();

@@ -1,0 +1,8 @@
+/armagetronad.js
+  Cache-Control: no-store
+
+/armagetronad.wasm
+  Cache-Control: no-store
+
+/armagetronad.data
+  Cache-Control: no-store
