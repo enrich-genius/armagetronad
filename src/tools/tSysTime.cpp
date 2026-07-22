@@ -35,19 +35,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-// The game owns a traditional blocking loop.  Its frame boundary therefore
-// needs to resume *from* the browser's animation callback, rather than from a
-// timer: a timer-driven continuation can draw complete frames between browser
-// composites, leaving a perfectly rendered WebGL canvas visibly black.
-//
-// Keep this as EM_ASYNC_JS (not a hand-written asynchronous import).  That
-// wrapper registers the import with Asyncify, so the C++ stack is unwound until
-// the animation frame arrives and then correctly rewound into this call.
-EM_ASYNC_JS(int, se_yield_to_animation_frame, (), {
-    return await new Promise(function (resolve) {
-        requestAnimationFrame(function () { resolve(0); });
-    });
-});
 #endif
 
 //! time structure
@@ -189,7 +176,18 @@ void usleep(int x)
     sleep_rest+=x;
     unsigned int r=sleep_rest/1000;
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // emscripten_sleep unwinds the stack via ASYNCIFY and resumes after the
+    // delay, keeping the tab responsive. Crucially it must sleep for a real
+    // interval: the game's frame limiter often asks for ~0ms, and a
+    // setTimeout(0) resume loop runs hundreds of times a second, starving the
+    // browser compositor so finished frames never reach the screen. Flooring the
+    // yield at ~16ms caps the loop near the display refresh and lets each frame
+    // actually be presented.
+    emscripten_sleep( r < 16 ? 16 : r );
+#else
     SDL_Delay(r);
+#endif
 #else
 
 #ifdef DEBUG
@@ -307,19 +305,7 @@ void tDelay( int usecdelay )
 {
     // delay a bit if we're not playing back
     if ( ! tRecorder::IsPlayingBack() )
-    {
-#ifdef __EMSCRIPTEN__
-        // This source file's normal (non-Windows) branch is the one compiled
-        // for WebAssembly.  Yield here, at the engine's actual frame boundary,
-        // instead of through libc usleep/SDL_Delay, which resumes via a timer.
-        // An rAF continuation gives the browser a compositor turn before the
-        // next frame mutates the WebGL default framebuffer.
-        (void)usecdelay;
-        (void)se_yield_to_animation_frame();
-#else
         usleep( usecdelay );
-#endif
-    }
     else
         s_delayedInPlayback = true;
 }
@@ -328,14 +314,7 @@ void tDelayForce( int usecdelay )
 {
     // delay a bit
     if ( !s_delayedInPlayback )
-    {
-#ifdef __EMSCRIPTEN__
-        (void)usecdelay;
-        (void)se_yield_to_animation_frame();
-#else
         usleep( usecdelay );
-#endif
-    }
     else
     {
         // when recording, the machine was idling around. No need to play that back.
