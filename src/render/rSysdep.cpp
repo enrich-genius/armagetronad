@@ -476,6 +476,10 @@ static void sr_DelayFrame( int targetFPS )
 rSysDep::rSwapMode rSysDep::swapMode_ = rSysDep::rSwap_glFlush;
 //rSysDep::rSwapMode rSysDep::swapMode_ = rSysDep::rSwap_60Hz;
 
+#ifdef __EMSCRIPTEN__
+static bool sr_skipPostSwapClear = false;
+#endif
+
 // buffer swap:
 #ifndef DEDICATED
 // for setting breakpoints in optimized mode, too
@@ -660,6 +664,9 @@ void rSysDep::SwapGL(){
 #if defined(SDL_OPENGL)
     if (lastSuccess.useSDL)
         SDL_GL_SwapBuffers();
+#ifdef __EMSCRIPTEN__
+    sr_skipPostSwapClear = true;
+#endif
     //#elif defined(HAVE_FXMESA)
     //fxMesaSwapBuffers();
 #endif
@@ -723,6 +730,7 @@ void rSysDep::SwapGL(){
 #ifndef DEDICATED
 static SDL_mutex *mut;
 
+
 static void stuff_init(){
     mut=SDL_CreateMutex();
 }
@@ -753,6 +761,13 @@ void sr_UnlockSDL(){
 #ifndef DEDICATED
 void  rSysDep::ClearGL(){
     if (sr_glOut){
+#ifdef __EMSCRIPTEN__
+        if (sr_skipPostSwapClear)
+        {
+            sr_skipPostSwapClear = false;
+            return;
+        }
+#endif
 
         /*
         if (sr_screenshotIsPlanned){
@@ -766,5 +781,3 @@ void  rSysDep::ClearGL(){
     }
 }
 #endif
-
-
