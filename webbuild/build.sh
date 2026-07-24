@@ -89,12 +89,11 @@ LDFLAGS=(
   -sSDL2_IMAGE_FORMATS='["png"]'
   -sLEGACY_GL_EMULATION=1
   -sGL_UNSAFE_OPTS=0
-  # JSPI suspends the native wasm stack for emscripten_sleep().  Unlike
-  # Asyncify, it does not reconstruct a continuation through the engine's
-  # deep virtual/function-pointer game loop (which trapped on a null function
-  # when a match started). Chromium supports this API natively.
-  -sJSPI=1
-  -Wno-experimental
+  -sASYNCIFY=1
+  # Entering a match crosses the engine's deep virtual/function-pointer call
+  # graph before it reaches a frame yield.  The default 16 KiB unwind stack
+  # corrupts that continuation and traps on a null table function.
+  -sASYNCIFY_STACK_SIZE=65536
   # No ALLOW_MEMORY_GROWTH: a growable wasm memory is backed by a *resizable*
   # ArrayBuffer in current Chrome, and TextDecoder.decode() rejects those, so
   # every UTF8ToString -- including the path in each openat() -- throws and the
