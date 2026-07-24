@@ -301,6 +301,21 @@ void tAdvanceFrameSys( tTime & start, tTime & relative )
 }
 
 static bool s_delayedInPlayback = false;
+#ifdef __EMSCRIPTEN__
+// Asyncify can only resume safely from selected top-level event loops. The
+// menus opt in around their own loop; game startup deliberately does not.
+static bool s_browserFrameYield = false;
+#endif
+
+void tSetBrowserFrameYield( bool enabled )
+{
+#ifdef __EMSCRIPTEN__
+    s_browserFrameYield = enabled;
+#else
+    (void)enabled;
+#endif
+}
+
 void tDelay( int usecdelay )
 {
     // delay a bit if we're not playing back
@@ -332,6 +347,14 @@ void tAdvanceFrame( int usecdelay )
     // delay a bit if we're not playing back
     if ( usecdelay > 0 )
         tDelay( usecdelay );
+#ifdef __EMSCRIPTEN__
+    else if ( s_browserFrameYield && !tRecorder::IsPlayingBack() )
+    {
+        // See tSetBrowserFrameYield(): unlike the game's nested transition
+        // paths, a menu loop is a safe Asyncify continuation boundary.
+        emscripten_sleep(16);
+    }
+#endif
 
     static tTime timeNewRelative;
     tAdvanceFrameSys( timeStart, timeNewRelative );

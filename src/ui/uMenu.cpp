@@ -176,13 +176,10 @@ void uMenu::OnEnter(){
     static const REAL timeout=.5;
 #endif
 
+    tSetBrowserFrameYield( true );
     while (!exitFlag && !quickexit && !exitToMain){
         st_DoToDo();
-        // A menu is its own top-level event loop. Give the browser a frame to
-        // process here rather than making every zero-delay tAdvanceFrame()
-        // call Asyncify-yield: game startup also uses that helper through deep
-        // virtual call chains which cannot safely be rewound.
-        tAdvanceFrame( 16000 );
+        tAdvanceFrame();
 
         ts=tSysTimeFloat()-lastt;
         lastt=tSysTimeFloat();
@@ -364,6 +361,8 @@ void uMenu::OnEnter(){
 #endif
     }
 
+    tSetBrowserFrameYield( false );
+
     s_globalRepeat = false;
 
     uCallbackMenuLeave::MenuLeave();
@@ -425,12 +424,18 @@ void uMenu::HandleEvent( SDL_Event event )
                             case(SDLK_RETURN):
                                     s_globalRepeat = false;
                 try
-        {
+                {
                     su_inMenu = false;
+                    // The selected action can synchronously create a game.
+                    // That deep engine path must not Asyncify-rewind through
+                    // the menu's browser frame yield.
+                    tSetBrowserFrameYield( false );
                     items[selected]->Enter();
+                    tSetBrowserFrameYield( true );
                 }
                 catch (tException const & e)
                 {
+                    tSetBrowserFrameYield( true );
                     uMenu::SetIdle(NULL);
 
                     // inform user of generic errors
@@ -442,6 +447,7 @@ void uMenu::HandleEvent( SDL_Event event )
                 // A specialized version is needed. The best part: it warns about the code below being redundant.
                 catch ( tGenericException const & e )
                 {
+                    tSetBrowserFrameYield( true );
                     try
                     {
                         tConsole::Message( e.GetName(), e.GetDescription(), 20 );
@@ -1314,7 +1320,7 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
                 }
             }
             rSysDep::SwapGL();
-            tAdvanceFrame( 16000 );
+            tAdvanceFrame();
         }
     }
 
