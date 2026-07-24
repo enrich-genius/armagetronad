@@ -74,6 +74,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tResourceManager.h"
 #include "nAuthentication.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <string>
@@ -4595,6 +4599,14 @@ void sg_EnterGameCore( nNetState enter_state ){
         goon=GameLoop();
 
         st_DoToDo();
+
+#ifdef __EMSCRIPTEN__
+        // This is the browser-facing iteration boundary for an active match.
+        // Yield here, after GameLoop has completed, rather than in the shared
+        // tAdvanceFrame helper: that helper is also called during setup via
+        // deep virtual call paths that Asyncify cannot safely resume.
+        emscripten_sleep( 16 );
+#endif
     }
 
     sg_SoundPause( false, false );
@@ -4966,4 +4978,3 @@ static void sg_FillServerSettings()
 }
 
 static nCallbackFillServerInfo sg_fillServerSettings(sg_FillServerSettings);
-
