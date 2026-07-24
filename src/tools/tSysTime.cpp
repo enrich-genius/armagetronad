@@ -332,6 +332,18 @@ void tAdvanceFrame( int usecdelay )
     // delay a bit if we're not playing back
     if ( usecdelay > 0 )
         tDelay( usecdelay );
+#ifdef __EMSCRIPTEN__
+    else if ( !tRecorder::IsPlayingBack() )
+    {
+        // The menu and several startup paths call tAdvanceFrame() without a
+        // delay. On desktop that is fine, but in the browser it becomes a
+        // tight synchronous loop: no input, compositor, or paint event can
+        // run, leaving a rendered-but-black canvas and freezing the tab.
+        // Use Emscripten's built-in Asyncify-aware sleep here rather than a
+        // custom async import; this is the canonical safe browser yield.
+        emscripten_sleep(16);
+    }
+#endif
 
     static tTime timeNewRelative;
     tAdvanceFrameSys( timeStart, timeNewRelative );
