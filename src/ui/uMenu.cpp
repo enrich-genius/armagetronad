@@ -178,7 +178,11 @@ void uMenu::OnEnter(){
 
     while (!exitFlag && !quickexit && !exitToMain){
         st_DoToDo();
-        tAdvanceFrame();
+        // A menu is its own top-level event loop. Give the browser a frame to
+        // process here rather than making every zero-delay tAdvanceFrame()
+        // call Asyncify-yield: game startup also uses that helper through deep
+        // virtual call chains which cannot safely be rewound.
+        tAdvanceFrame( 16000 );
 
         ts=tSysTimeFloat()-lastt;
         lastt=tSysTimeFloat();
@@ -1310,7 +1314,7 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
                 }
             }
             rSysDep::SwapGL();
-            tAdvanceFrame();
+            tAdvanceFrame( 16000 );
         }
     }
 
@@ -1330,4 +1334,3 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
 
     return ret;
 }
-
