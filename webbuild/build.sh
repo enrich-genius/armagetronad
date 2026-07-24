@@ -90,7 +90,10 @@ LDFLAGS=(
   -sLEGACY_GL_EMULATION=1
   -sGL_UNSAFE_OPTS=0
   -sASYNCIFY=1
-  -sASYNCIFY_STACK_SIZE=16384
+  # Entering a match crosses the engine's deep virtual/function-pointer call
+  # graph before it reaches a frame yield.  The default 16 KiB unwind stack
+  # corrupts that continuation and traps on a null table function.
+  -sASYNCIFY_STACK_SIZE=65536
   # No ALLOW_MEMORY_GROWTH: a growable wasm memory is backed by a *resizable*
   # ArrayBuffer in current Chrome, and TextDecoder.decode() rejects those, so
   # every UTF8ToString -- including the path in each openat() -- throws and the
