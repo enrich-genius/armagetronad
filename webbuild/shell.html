@@ -202,6 +202,22 @@
     bindTouchKey('touch-brake', 'ArrowDown', 'ArrowDown', 40);
     bindTouchKey('touch-select', 'Enter', 'Enter', 13);
 
+    // SDL 1 receives mouse events, not touch events. Convert a canvas tap to
+    // one mouse-down event; uMenu uses it to select the tapped row (or accept
+    // the currently selected row). Preventing the native compatibility click
+    // avoids a double activation on mobile browsers.
+    canvas.addEventListener('pointerdown', function (event) {
+      if (event.pointerType === 'touch') event.preventDefault();
+    });
+    canvas.addEventListener('pointerup', function (event) {
+      if (event.pointerType !== 'touch') return;
+      event.preventDefault();
+      canvas.dispatchEvent(new MouseEvent('mousedown', {
+        bubbles: true, cancelable: true, button: 0, buttons: 1,
+        clientX: event.clientX, clientY: event.clientY
+      }));
+    });
+
     canvas.focus();
   </script>
   {{{ SCRIPT }}}

@@ -471,6 +471,41 @@ void uMenu::HandleEvent( SDL_Event event )
             }
         }
         break;
+        case SDL_MOUSEBUTTONDOWN:
+        {
+            // A tap/click selects the closest rendered menu row. Tapping an
+            // already selected row is equivalent to Return, which gives touch
+            // users the familiar tap-to-select, tap-again-to-activate flow.
+            if ( event.button.button == 1 && menuentries > 0 && sr_screenHeight > 0 )
+            {
+                REAL y = 1 - 2 * REAL( event.button.y ) / REAL( sr_screenHeight );
+                int choice = selected;
+                REAL distance = fabs( y - YPos( choice ) );
+                for ( int i = 0; i < items.Len(); ++i )
+                {
+                    REAL candidateDistance = fabs( y - YPos( i ) );
+                    if ( candidateDistance < distance )
+                    {
+                        choice = i;
+                        distance = candidateDistance;
+                    }
+                }
+
+                if ( choice == selected )
+                {
+                    SDL_Event enter = event;
+                    enter.type = SDL_KEYDOWN;
+                    enter.key.keysym.sym = SDLK_RETURN;
+                    HandleEvent( enter );
+                }
+                else
+                {
+                    selected = choice;
+                    lastkey = tSysTimeFloat();
+                }
+            }
+            break;
+        }
         default:
             // let the input subsystem handle events for later processing
             su_HandleEvent( event, true );
