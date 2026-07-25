@@ -47,8 +47,15 @@
     button:hover { background: #243049; }
     #github { position: absolute; left: 50%; transform: translateX(-50%); color: #8ddcff; text-decoration: none; }
     #github:hover { color: #cfe; text-decoration: underline; }
+    /* Once the loader finishes, keep only the lightweight action controls. */
+    #bar.ready { min-height: 1.25rem; justify-content: flex-end; }
+    #bar.ready #status, #bar.ready #progress { display: none; }
+    #bar.ready #github { position: static; transform: none; margin: 0 auto; }
     #touch-controls { display: none; }
     @media (hover: none) and (pointer: coarse) {
+      #fs { display: none; }
+      #github { left: auto; right: .8rem; transform: none; }
+      #bar.ready #github { margin: 0 0 0 auto; }
       #touch-controls { position: absolute; inset: 0; display: block; pointer-events: none; touch-action: none; }
       .touch-button { position: absolute; bottom: max(1rem, env(safe-area-inset-bottom)); width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
       .touch-button:active { background: rgba(60,112,150,.9); }
@@ -81,6 +88,7 @@
   <script>
     var statusEl = document.getElementById('status');
     var barEl = document.getElementById('progress-bar');
+    var toolbarEl = document.getElementById('bar');
     var canvas = document.getElementById('canvas');
     var wrap = document.getElementById('wrap');
     // Replaced by build.sh. Keep the generated JS, wasm, and data package on
@@ -142,6 +150,7 @@
       printErr: function (t) { console.warn(t); },
       setStatus: function (t) {
         statusEl.textContent = t || 'Running';
+        toolbarEl.classList.toggle('ready', !t || t === 'Running');
         var m = t && t.match(/([\d.]+)\/([\d.]+)/);
         if (m) barEl.style.width = (100 * parseFloat(m[1]) / parseFloat(m[2])) + '%';
         else if (!t) barEl.style.width = '100%';
