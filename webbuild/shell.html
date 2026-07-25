@@ -47,6 +47,17 @@
     button:hover { background: #243049; }
     #github { position: absolute; left: 50%; transform: translateX(-50%); color: #8ddcff; text-decoration: none; }
     #github:hover { color: #cfe; text-decoration: underline; }
+    #touch-controls { display: none; }
+    @media (hover: none) and (pointer: coarse) {
+      #touch-controls { position: absolute; inset: 0; display: block; pointer-events: none; touch-action: none; }
+      .touch-button { position: absolute; bottom: max(1rem, env(safe-area-inset-bottom)); width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+      .touch-button:active { background: rgba(60,112,150,.9); }
+      #touch-left { left: max(1rem, env(safe-area-inset-left)); }
+      #touch-right { left: max(6.25rem, calc(env(safe-area-inset-left) + 5.25rem)); }
+      #touch-brake { right: max(1rem, env(safe-area-inset-right)); font-size: .75rem; }
+      #touch-select { right: max(6.25rem, calc(env(safe-area-inset-right) + 5.25rem)); font-size: .72rem; }
+      #wrap:not(:fullscreen) #touch-controls { bottom: 2.25rem; }
+    }
     /* In fullscreen the canvas is the only thing on screen. */
     #wrap:fullscreen #bar { display: none; }
   </style>
@@ -54,6 +65,12 @@
 <body>
   <div id="wrap">
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="touch-controls" aria-label="Touch controls">
+      <button id="touch-left" class="touch-button" aria-label="Turn left">←</button>
+      <button id="touch-right" class="touch-button" aria-label="Turn right">→</button>
+      <button id="touch-select" class="touch-button" aria-label="Select menu item">SELECT</button>
+      <button id="touch-brake" class="touch-button" aria-label="Brake">BRAKE</button>
+    </div>
     <div id="bar">
       <div id="status">Loading…</div>
       <div id="progress"><div id="progress-bar"></div></div>
@@ -145,6 +162,46 @@
       try { FS.syncfs(false, function () {}); } catch (e) {}
     });
     canvas.addEventListener('click', function () { canvas.focus(); });
+
+    // SDL 1 maps the legacy DOM key codes below to its cursor/return keys.
+    // Pointer events give each virtual button proper press-and-hold semantics,
+    // so a player can steer or brake continuously instead of only tapping.
+    function sendVirtualKey(type, key, code, keyCode) {
+      var event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, {
+        key: { value: key }, code: { value: code }, keyCode: { value: keyCode },
+        which: { value: keyCode }, charCode: { value: 0 }, location: { value: 0 },
+        repeat: { value: false }, ctrlKey: { value: false }, shiftKey: { value: false },
+        altKey: { value: false }, metaKey: { value: false }
+      });
+      canvas.dispatchEvent(event);
+    }
+    function bindTouchKey(id, key, code, keyCode) {
+      var button = document.getElementById(id);
+      var pressed = false;
+      function release(event) {
+        if (!pressed) return;
+        pressed = false;
+        sendVirtualKey('keyup', key, code, keyCode);
+        if (event) event.preventDefault();
+      }
+      button.addEventListener('pointerdown', function (event) {
+        event.preventDefault();
+        if (pressed) return;
+        pressed = true;
+        button.setPointerCapture(event.pointerId);
+        canvas.focus();
+        sendVirtualKey('keydown', key, code, keyCode);
+      });
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('lostpointercapture', release);
+    }
+    bindTouchKey('touch-left', 'ArrowLeft', 'ArrowLeft', 37);
+    bindTouchKey('touch-right', 'ArrowRight', 'ArrowRight', 39);
+    bindTouchKey('touch-brake', 'ArrowDown', 'ArrowDown', 40);
+    bindTouchKey('touch-select', 'Enter', 'Enter', 13);
+
     canvas.focus();
   </script>
   {{{ SCRIPT }}}
