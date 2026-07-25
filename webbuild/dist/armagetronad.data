@@ -7507,8 +7507,10 @@ first_setup_leave_help      Don't change this.
 
 first_setup_keys            Controls:
 first_setup_keys_help       Select your startup keyboard layout here. It can be customized later, individual bindings can be changed. Select with cursor left and cursor right.
-first_setup_keys_cursor     Cursor Keys
+first_setup_keys_cursor     Cursor-Keys
 first_setup_keys_cursor_help Control your cycle with the cursor keys, bulk of keyboard used for camera control, special actions and the second player. Good for right handed people and our general recommendation.
+first_setup_keys_touch      Touch
+first_setup_keys_touch_help Use the on-screen touch controls. You can also tap a menu item once to select it and again to activate it.
 first_setup_keys_cursor_single     Cursor Keys, Single Player
 first_setup_keys_cursor_single_help Control your cycle with the cursor keys, bulk of keyboard used for camera control and special actions. Good for right handed people when no friends are around.
 first_setup_keys_wasd       WASD Keys
@@ -7527,8 +7529,8 @@ first_setup_net_dialup      Dialup
 first_setup_net_dialup_help You are connected to the internet via a traditional modem connected to a telephone line.
 first_setup_net_isdn        ISDN
 first_setup_net_isdn_help   You are connected to the internet via a digital ISDN line.
-first_setup_net_dsl         ADSL, Cable or better
-first_setup_net_dsl_help    You are connected to the internet via DSL, ADSL, Cable, T1 or other kinds of broadband.
+first_setup_net_dsl         Modern internet (16 up / 64 down kbps)
+first_setup_net_dsl_help    Recommended for Wi-Fi, mobile data, Ethernet, and other modern connections. Armagetron needs roughly 16 kbps upload and 64 kbps download for these settings.
 
 
 #********************************************
@@ -8332,7 +8334,6 @@ global_id_help                If set to 1, Global IDs (Armathentication) will be
 include english_base_notranslate.txt
 
 # Room for lost settings in translation files:
-
 #********************************************
 #********************************************
 #

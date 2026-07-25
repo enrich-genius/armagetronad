@@ -49,6 +49,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "uMenu.h"
 #include "ePlayer.h"
 #include "gLanguageMenu.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include "gAICharacter.h"
 #include "gCycle.h"
 //#include <unistd>
@@ -178,7 +181,16 @@ void sg_StartupPlayerMenu()
         k.NewChoice( "$first_setup_leave", "$first_setup_leave_help", tString("") );
         keyboardTemplate="";
     }
-    k.NewChoice( "$first_setup_keys_cursor", "$first_setup_keys_cursor_help", tString("keys_cursor.cfg") );
+#ifdef __EMSCRIPTEN__
+    // The web shell provides virtual cursor controls on phones and tablets.
+    // Keep the setup label short so it stays on the same row as "Controls".
+    bool touchControls = emscripten_run_script_int(
+        "navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches ? 1 : 0" ) != 0;
+    if ( touchControls )
+        k.NewChoice( "$first_setup_keys_touch", "$first_setup_keys_touch_help", tString("keys_cursor.cfg") );
+    else
+#endif
+        k.NewChoice( "$first_setup_keys_cursor", "$first_setup_keys_cursor_help", tString("keys_cursor.cfg") );
     k.NewChoice( "$first_setup_keys_wasd", "$first_setup_keys_wasd_help", tString("keys_wasd.cfg") );
     k.NewChoice( "$first_setup_keys_zqsd", "$first_setup_keys_zqsd_help", tString("keys_zqsd.cfg") );
     k.NewChoice( "$first_setup_keys_cursor_single", "$first_setup_keys_cursor_single_help", tString("keys_cursor_single.cfg") );
@@ -324,6 +336,9 @@ static void welcome(){
             timeout = tSysTimeFloat() + 6;
 
             uInputProcessGuard inputProcessGuard;
+            // Another leaf UI loop that must yield to the browser; otherwise
+            // the splash screen spins for its whole 6 second timeout.
+            tSetBrowserFrameYield( true );
             while ((!su_GetSDLInput(tEvent) || tEvent.type!=SDL_KEYDOWN) &&
                     tSysTimeFloat() < timeout)
             {
@@ -341,6 +356,7 @@ static void welcome(){
 
                 tAdvanceFrame();
             }
+            tSetBrowserFrameYield( false );
         }
 
         // catch some keyboard input
@@ -943,6 +959,5 @@ static tConfItemFunc st_Dummy11("MASTER_SAVE_INTERVAL", &st_Dummy);
 static tConfItemFunc st_Dummy12("MASTER_IDLE", &st_Dummy);
 static tConfItemFunc st_Dummy13("MASTER_PORT", &st_Dummy);
 #endif
-
 
 

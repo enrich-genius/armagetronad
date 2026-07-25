@@ -1296,6 +1296,11 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
                 lastNewline = i + 1;
             }
         }
+        // Like uMenu::Enter()'s loop, this is a leaf UI loop: it only renders
+        // and polls input, and cannot start a game. Without the yield it spins
+        // synchronously for the whole timeout (300s for the welcome messages),
+        // which freezes the tab and stops the very input that would dismiss it.
+        tSetBrowserFrameYield( true );
         while (  !quickexit &&
                  (to < 0 || tSysTimeFloat() < timeout)){
             //while(  !quickexit && ( !su_GetSDLInput(tEvent) || tEvent.type!=SDL_KEYDOWN) &&
@@ -1357,6 +1362,7 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
             rSysDep::SwapGL();
             tAdvanceFrame();
         }
+        tSetBrowserFrameYield( false );
     }
 
     // catch some keyboard input
