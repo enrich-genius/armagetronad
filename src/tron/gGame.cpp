@@ -2431,9 +2431,16 @@ void net_game(){
       "$network_host_help",&sg_HostGameMenu);
     */
 
+#ifndef __EMSCRIPTEN__
     uMenuItemFunction lan
     (&net_menu,"$network_menu_lan_text",
      "$network_menu_lan_help",&gServerBrowser::BrowseLAN);
+#else
+    // LAN discovery needs a UDP broadcast, and there is no such thing in a
+    // browser: emscripten's setsockopt returns ENOPROTOOPT unconditionally, so
+    // nSocket::Broadcast can never set SO_BROADCAST. The entry could only ever
+    // report "Unable to make socket broadcast capable", so do not offer it.
+#endif
 
     uMenuItemFunction inter
     (&net_menu,"$network_menu_internet_text",
@@ -2592,8 +2599,17 @@ void MainMenu(bool ingame){
         exhelp="$ingame_menu_exit_help";
     }
 
-    uMenuItemExit exx(&MainMenu,extitle,
-                      exhelp);
+    // "Exit Game" has nothing to exit to in a browser: the runtime is built
+    // with EXIT_RUNTIME=0 and main() never returns, so choosing it would only
+    // leave a dead tab. In the in-game menu this same item is "Resume Game",
+    // which is still wanted, so drop it from the top level alone.
+#ifdef __EMSCRIPTEN__
+    bool const wantExitItem = ingame;
+#else
+    bool const wantExitItem = true;
+#endif
+    uMenuItemExit * exitItem =
+        wantExitItem ? new uMenuItemExit(&MainMenu,extitle,exhelp) : NULL;
 
     uMenuItemFunction *return_to_main=NULL;
     if (ingame){
@@ -2749,6 +2765,8 @@ void MainMenu(bool ingame){
         delete start;
     if (return_to_main)
         delete return_to_main;
+    if (exitItem)
+        delete exitItem;
     if (se_PlayerMenu)
         delete se_PlayerMenu;
     if (reset)
