@@ -159,7 +159,15 @@ public:
     };
 
     virtual void BeginQuadStrip(){
+#ifdef __EMSCRIPTEN__
+        // emscripten's immediate mode emulation implements GL_QUADS but aborts
+        // the whole runtime on GL_QUAD_STRIP, which is what the cycle walls are
+        // drawn with. Both strips consume vertices in the same order and cover
+        // the same surface, so a triangle strip renders identically here.
+        BeginPrimitive(GL_TRIANGLE_STRIP, true);
+#else
         BeginPrimitive(GL_QUAD_STRIP, true);
+#endif
     };
 
     virtual void BeginTriangleFan(){

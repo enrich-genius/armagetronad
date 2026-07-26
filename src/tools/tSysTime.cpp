@@ -316,11 +316,27 @@ void tSetBrowserFrameYield( bool enabled )
 #endif
 }
 
+//! sleep without starving the browser
+static void st_Sleep( int usecdelay )
+{
+#ifdef __EMSCRIPTEN__
+    // The usleep() defined above lives in the WIN32 branch of this file, so a
+    // wasm build reaches libc's instead -- and emscripten implements that as a
+    // busy-wait that never returns to the event loop, freezing the tab for the
+    // whole delay. Suspend through Asyncify and floor the wait near one display
+    // refresh, since the frame limiter often asks for ~0.
+    int ms = usecdelay / 1000;
+    emscripten_sleep( ms < 16 ? 16 : ms );
+#else
+    usleep( usecdelay );
+#endif
+}
+
 void tDelay( int usecdelay )
 {
     // delay a bit if we're not playing back
     if ( ! tRecorder::IsPlayingBack() )
-        usleep( usecdelay );
+        st_Sleep( usecdelay );
     else
         s_delayedInPlayback = true;
 }
@@ -329,7 +345,7 @@ void tDelayForce( int usecdelay )
 {
     // delay a bit
     if ( !s_delayedInPlayback )
-        usleep( usecdelay );
+        st_Sleep( usecdelay );
     else
     {
         // when recording, the machine was idling around. No need to play that back.

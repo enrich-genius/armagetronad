@@ -37,33 +37,38 @@
   </script>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0a12; color: #cfe; font-family: system-ui, sans-serif; }
-    #wrap { position: fixed; inset: 0; display: flex; flex-direction: column; }
-    #canvas { flex: 1 1 auto; display: block; width: 100%; height: 100%; background: #000; outline: none; }
-    #bar { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 1rem; padding: .4rem .8rem; background: #11111c; font-size: .8rem; }
+    #wrap { position: fixed; inset: 0; }
+    /* The canvas owns the entire viewport; every control floats above it. */
+    #canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; background: #000; outline: none; }
+    /* While loading, an opaque strip along the bottom. */
+    #bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 1rem; padding: .4rem .8rem; background: #11111c; font-size: .8rem; }
     #status { flex: 1 1 auto; opacity: .8; }
     #progress { width: 220px; height: 4px; background: #1a1a2a; border-radius: 2px; overflow: hidden; }
     #progress > div { height: 100%; width: 0; background: #4ad; transition: width .2s; }
     button { font: inherit; padding: .25rem .8rem; border: 1px solid #345; border-radius: 4px; background: #1b2233; color: #cfe; cursor: pointer; }
     button:hover { background: #243049; }
-    #github { position: absolute; left: 50%; transform: translateX(-50%); color: #8ddcff; text-decoration: none; }
-    #github:hover { color: #cfe; text-decoration: underline; }
-    /* Once the loader finishes, keep only the lightweight action controls. */
-    #bar.ready { min-height: 1.25rem; justify-content: flex-end; }
+    /* Withheld until the loader strip is gone, so the two never overlap. */
+    #github { display: none; color: #8ddcff; text-decoration: none; }
+    /* Loading finished: the strip collapses to nothing, the game draws to the
+       very bottom of the screen, and the controls sit on top of it. */
+    #bar.ready { display: block; padding: 0; background: none; pointer-events: none; }
     #bar.ready #status, #bar.ready #progress { display: none; }
-    #bar.ready #github { position: static; transform: none; margin: 0 auto; }
+    #bar.ready #github { display: block; position: absolute; left: 50%; bottom: .45rem; transform: translateX(-50%); pointer-events: auto; opacity: .7; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+    #bar.ready #github:hover { opacity: 1; color: #cfe; text-decoration: underline; }
+    #bar.ready #fs { position: absolute; right: .8rem; bottom: .45rem; pointer-events: auto; opacity: .7; }
+    #bar.ready #fs:hover { opacity: 1; }
     #touch-controls { display: none; }
     @media (hover: none) and (pointer: coarse) {
       #fs { display: none; }
-      #github { left: auto; right: .8rem; transform: none; }
-      #bar.ready #github { margin: 0 0 0 auto; }
-      #touch-controls { position: absolute; inset: 0; display: block; pointer-events: none; touch-action: none; }
+      /* Clear of the virtual control row that lines the bottom edge. */
+      #bar.ready #github { top: .5rem; bottom: auto; }
+      #touch-controls { position: absolute; inset: 0; z-index: 1; display: block; pointer-events: none; touch-action: none; }
       .touch-button { position: absolute; bottom: max(1rem, env(safe-area-inset-bottom)); width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
       .touch-button:active { background: rgba(60,112,150,.9); }
       #touch-left { left: max(1rem, env(safe-area-inset-left)); }
       #touch-right { left: max(6.25rem, calc(env(safe-area-inset-left) + 5.25rem)); }
       #touch-brake { right: max(1rem, env(safe-area-inset-right)); font-size: .75rem; }
       #touch-select { right: max(6.25rem, calc(env(safe-area-inset-right) + 5.25rem)); font-size: .72rem; }
-      #wrap:not(:fullscreen) #touch-controls { bottom: 2.25rem; }
     }
     /* In fullscreen the canvas is the only thing on screen. */
     #wrap:fullscreen #bar { display: none; }
@@ -111,7 +116,7 @@
     }
     // Must happen before the module starts so the first video mode is sane.
     canvas.width = Math.max(640, window.innerWidth);
-    canvas.height = Math.max(480, window.innerHeight - 32);
+    canvas.height = Math.max(480, window.innerHeight);
 
     // Belt-and-suspenders for the opaque-context fix in rScreen.cpp: force every
     // WebGL context on this canvas to be created without an alpha channel. An
@@ -172,6 +177,18 @@
     });
     canvas.addEventListener('click', function () { canvas.focus(); });
 
+    // Menus swap their contents under a resting finger, so a menu activation
+    // only counts once per cooldown and only after a real lift. Steering is
+    // deliberately exempt: it needs continuous press-and-hold.
+    var MENU_TAP_COOLDOWN_MS = 350;
+    var lastMenuTapAt = 0;
+    function menuTapAllowed() {
+      var now = Date.now();
+      if (now - lastMenuTapAt < MENU_TAP_COOLDOWN_MS) return false;
+      lastMenuTapAt = now;
+      return true;
+    }
+
     // SDL 1 maps the legacy DOM key codes below to its cursor/return keys.
     // Pointer events give each virtual button proper press-and-hold semantics,
     // so a player can steer or brake continuously instead of only tapping.
@@ -185,7 +202,7 @@
       });
       canvas.dispatchEvent(event);
     }
-    function bindTouchKey(id, key, code, keyCode) {
+    function bindTouchKey(id, key, code, keyCode, throttle) {
       var button = document.getElementById(id);
       var pressed = false;
       function release(event) {
@@ -197,6 +214,7 @@
       button.addEventListener('pointerdown', function (event) {
         event.preventDefault();
         if (pressed) return;
+        if (throttle && !menuTapAllowed()) return;
         pressed = true;
         button.setPointerCapture(event.pointerId);
         canvas.focus();
@@ -209,23 +227,35 @@
     bindTouchKey('touch-left', 'ArrowLeft', 'ArrowLeft', 37);
     bindTouchKey('touch-right', 'ArrowRight', 'ArrowRight', 39);
     bindTouchKey('touch-brake', 'ArrowDown', 'ArrowDown', 40);
-    bindTouchKey('touch-select', 'Enter', 'Enter', 13);
+    bindTouchKey('touch-select', 'Enter', 'Enter', 13, true);
 
     // SDL 1 receives mouse events, not touch events. Convert a canvas tap to
     // one mouse-down event; uMenu uses it to select the tapped row (or accept
     // the currently selected row). Preventing the native compatibility click
     // avoids a double activation on mobile browsers.
+    //
+    // The tap is emitted on release, and only for a pointer that went down on
+    // the canvas in the first place, so a finger already resting on the screen
+    // when a new menu appears cannot activate whatever lands under it.
+    var tapPointerId = null;
     canvas.addEventListener('pointerdown', function (event) {
-      if (event.pointerType === 'touch') event.preventDefault();
-    });
-    canvas.addEventListener('pointerup', function (event) {
       if (event.pointerType !== 'touch') return;
       event.preventDefault();
+      // Ignore additional fingers while one is already down.
+      if (tapPointerId === null) tapPointerId = event.pointerId;
+    });
+    function endCanvasTap(event) {
+      if (event.pointerType !== 'touch' || tapPointerId !== event.pointerId) return;
+      tapPointerId = null;
+      event.preventDefault();
+      if (event.type !== 'pointerup' || !menuTapAllowed()) return;
       canvas.dispatchEvent(new MouseEvent('mousedown', {
         bubbles: true, cancelable: true, button: 0, buttons: 1,
         clientX: event.clientX, clientY: event.clientY
       }));
-    });
+    }
+    canvas.addEventListener('pointerup', endCanvasTap);
+    canvas.addEventListener('pointercancel', endCanvasTap);
 
     canvas.focus();
   </script>

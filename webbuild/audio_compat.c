@@ -23,6 +23,9 @@
  */
 #include <SDL.h>
 #include <SDL_mixer.h>
+#include <emscripten.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,26 +34,58 @@
 static Uint32 rd_le32(const Uint8 *p) { return p[0] | (p[1]<<8) | (p[2]<<16) | ((Uint32)p[3]<<24); }
 static Uint16 rd_le16(const Uint8 *p) { return (Uint16)(p[0] | (p[1]<<8)); }
 
+/* emscripten's SDL_RWFromFile does not return an SDL_RWops at all -- it returns
+ * a small integer index into a JavaScript-side SDL.rwops table. Dereferencing
+ * that integer as a struct and calling its ->seek/->read members traps the
+ * whole runtime with a call_indirect "function signature mismatch", which is
+ * what entering a game used to do the moment it loaded its first sound. So
+ * recover the real path from that table and read the file with stdio, which
+ * sees the same preloaded MEMFS. The heap is poked directly rather than via
+ * stringToUTF8() so this does not depend on runtime helpers surviving DCE. */
+static int rwops_path(SDL_RWops *src, char *buf, int buflen)
+{
+    return EM_ASM_INT({
+        var table = (typeof SDL !== 'undefined' && SDL.rwops) ? SDL.rwops : null;
+        var rw = table ? table[$0] : null;
+        if (!rw || !rw.filename) return 0;
+        var name = rw.filename;
+        var i = 0;
+        for (; i < name.length && i < $2 - 1; ++i)
+            HEAPU8[$1 + i] = name.charCodeAt(i) & 0xff;
+        HEAPU8[$1 + i] = 0;
+        return 1;
+    }, (int)(intptr_t)src, buf, buflen);
+}
+
 SDL_AudioSpec *SDL_LoadWAV_RW(SDL_RWops *src, int freesrc,
                               SDL_AudioSpec *spec, Uint8 **audio_buf,
                               Uint32 *audio_len)
 {
     Uint8 *file = NULL;
     SDL_AudioSpec *ret = NULL;
+    char path[512];
+    FILE *fp = NULL;
+    long size = 0;
 
-    if (!src || !spec || !audio_buf || !audio_len)
+    if (!spec || !audio_buf || !audio_len)
         goto done;
 
     *audio_buf = NULL;
     *audio_len = 0;
 
+    if (!rwops_path(src, path, (int)sizeof(path)))
+        goto done;
+
     /* Slurp the whole file into memory; these effects are a few tens of KB. */
-    Sint64 size = SDL_RWseek(src, 0, RW_SEEK_END);
+    fp = fopen(path, "rb");
+    if (!fp) goto done;
+    if (fseek(fp, 0, SEEK_END) != 0) goto done;
+    size = ftell(fp);
     if (size <= 44) goto done;                 /* smaller than a WAV header */
-    SDL_RWseek(src, 0, RW_SEEK_SET);
+    rewind(fp);
     file = (Uint8 *)malloc((size_t)size);
     if (!file) goto done;
-    if (SDL_RWread(src, file, 1, (size_t)size) != (size_t)size) goto done;
+    if (fread(file, 1, (size_t)size, fp) != (size_t)size) goto done;
 
     if (memcmp(file, "RIFF", 4) != 0 || memcmp(file + 8, "WAVE", 4) != 0)
         goto done;
@@ -115,9 +150,12 @@ SDL_AudioSpec *SDL_LoadWAV_RW(SDL_RWops *src, int freesrc,
     ret = spec;
 
 done:
+    if (fp) fclose(fp);
     free(file);
-    if (src && freesrc)
-        SDL_RWclose(src);
+    /* SDL_FreeRW is the JS-side table release and takes the same handle;
+       SDL_RWclose would dereference it as a pointer again. */
+    if (freesrc)
+        SDL_FreeRW(src);
     return ret;
 }
 

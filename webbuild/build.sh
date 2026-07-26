@@ -77,6 +77,12 @@ CXXFLAGS=(
   -std=c++17
   -O2
   -DHAVE_CONFIG_H
+  # The engine throws across the simulation: eSensor::PassEdge unwinds out of a
+  # wall walk with a throw, and main()/sg_EnterGame() guard themselves with
+  # try/catch. Without this emscripten compiles __cxa_throw to abort(), so the
+  # first cycle that sensed a wall killed the runtime. Emscripten (JS) EH rather
+  # than -fwasm-exceptions, which does not combine with ASYNCIFY.
+  -fexceptions
   -Wno-narrowing -Wno-writable-strings -Wno-deprecated -Wno-register
   -Wno-c++11-narrowing -fno-strict-aliasing
   -sUSE_SDL=1 -sUSE_SDL_IMAGE=1 -sUSE_SDL_MIXER=1 -sUSE_LIBPNG=1
@@ -85,6 +91,7 @@ CXXFLAGS=(
 
 LDFLAGS=(
   -O2
+  -fexceptions
   -sUSE_SDL=1 -sUSE_SDL_IMAGE=1 -sUSE_SDL_MIXER=1 -sUSE_LIBPNG=1
   -sSDL2_IMAGE_FORMATS='["png"]'
   -sLEGACY_GL_EMULATION=1
