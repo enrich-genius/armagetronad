@@ -64,6 +64,13 @@ protected:
 
     int                  selected;
 
+    //! has a tap already picked a row in this menu? Until one has, a tap only
+    //! moves the selection, never activates it -- otherwise the row that
+    //! happens to be selected by default fires on the first touch, so a tap
+    //! that opens a screen runs straight through into whatever lands under
+    //! the finger next.
+    bool                 tapSelected;
+
     REAL YPos(int num);
 public:
     static bool          wrap;

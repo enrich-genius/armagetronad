@@ -65,6 +65,7 @@ uMenu::uMenu(const char *t="",bool exit_item)
     menuBot=-.7;
     yOffset=0;
     selected = 10000000;
+    tapSelected = false;
 }
 #endif
 
@@ -76,6 +77,7 @@ uMenu::uMenu(const tOutput &t,bool exit_item)
     menuBot=-.7;
     yOffset=0;
     selected = 100000000;
+    tapSelected = false;
 }
 
 uMenu::~uMenu(){
@@ -167,6 +169,9 @@ void uMenu::OnEnter(){
         return;
 
     exitFlag=0;
+    // A menu object outlives a single visit, so make every entry start needing
+    // its own select-then-activate pair rather than inheriting the last one's.
+    tapSelected = false;
     yOffset=menuTop;
     REAL lastt=0;
     REAL ts=0;
@@ -473,6 +478,19 @@ void uMenu::HandleEvent( SDL_Event event )
         break;
         case SDL_MOUSEBUTTONDOWN:
         {
+            // SDL 1 reports the wheel as button presses; move the highlight
+            // with it, exactly as the cursor keys would.
+            if ( event.button.button == SDL_BUTTON_WHEELUP ||
+                 event.button.button == SDL_BUTTON_WHEELDOWN )
+            {
+                SDL_Event key = event;
+                key.type = SDL_KEYDOWN;
+                key.key.keysym.sym =
+                    ( event.button.button == SDL_BUTTON_WHEELUP ) ? SDLK_UP : SDLK_DOWN;
+                HandleEvent( key );
+                break;
+            }
+
             // A tap/click selects the closest rendered menu row. Tapping an
             // already selected row is equivalent to Return, which gives touch
             // users the familiar tap-to-select, tap-again-to-activate flow.
@@ -491,7 +509,7 @@ void uMenu::HandleEvent( SDL_Event event )
                     }
                 }
 
-                if ( choice == selected )
+                if ( choice == selected && tapSelected )
                 {
                     SDL_Event enter = event;
                     enter.type = SDL_KEYDOWN;
@@ -501,6 +519,7 @@ void uMenu::HandleEvent( SDL_Event event )
                 else
                 {
                     selected = choice;
+                    tapSelected = true;
                     lastkey = tSysTimeFloat();
                 }
             }

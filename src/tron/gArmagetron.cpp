@@ -157,8 +157,8 @@ void sg_StartupPlayerMenu()
     uMenu firstSetup("$first_setup", false);
     firstSetup.SetBot(-.2);
     
-    uMenuItemExit e2(&firstSetup, "$menuitem_accept", "$menuitem_accept_help");
-    
+    // Upstream puts an Accept at both ends of this menu. One is enough, and two
+    // identical rows read as a bug on a short touch screen.
     ePlayer * player = ePlayer::PlayerConfig(0);
     tASSERT( player );
 
