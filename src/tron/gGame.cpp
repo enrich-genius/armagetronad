@@ -2121,6 +2121,13 @@ bool ConnectToServerCore(nServerInfoBase *server)
     if (sn_GetNetState()==nCLIENT){
         REAL endTime=tSysTimeFloat()+30;
         con << tOutput("$network_connecting_gamestate");
+        // Nothing in this loop reaches the browser on its own: tAdvanceFrame()
+        // with no delay only suspends inside a menu, and sn_Delay() just does a
+        // socket select. So it spun for the full 30 seconds, and since the
+        // reply arrives on a WebSocket it could not be delivered while the
+        // event loop was blocked -- the wait deadlocked against itself and the
+        // server timed the player out.
+        tSetBrowserFrameYield( true );
         while (!sg_currentGame && tSysTimeFloat()<endTime && (sn_GetNetState() != nSTANDALONE)){
             tAdvanceFrame();
             sg_Receive();
@@ -2136,6 +2143,7 @@ bool ConnectToServerCore(nServerInfoBase *server)
 
             sn_Delay();
         }
+        tSetBrowserFrameYield( false );
         if (sg_currentGame){
             sr_con.autoDisplayAtNewline=false;
             sr_con.fullscreen=false;

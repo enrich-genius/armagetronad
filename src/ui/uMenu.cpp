@@ -48,6 +48,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <vector>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+//! is the primary pointer a finger?
+//
+// On a touch screen the tap position decides the selection outright, so a tap
+// away from every row must never activate whatever happens to be highlighted.
+// Asked of the browser directly rather than inferred from which event types
+// have been seen: a tap can leak a compatibility mouse-move on some mobile
+// browsers, which would otherwise quietly enable the desktop behaviour.
+static bool su_CoarsePointer()
+{
+    static int coarse = -1;
+    if ( coarse < 0 )
+        coarse = emscripten_run_script_int(
+            "(navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches) ? 1 : 0" );
+    return coarse != 0;
+}
+#endif
+
 FUNCPTR  uMenu::idle(NULL);
 
 bool uMenu::wrap=true;
@@ -66,6 +86,7 @@ uMenu::uMenu(const char *t="",bool exit_item)
     yOffset=0;
     selected = 10000000;
     tapSelected = false;
+    pointerSeen = false;
 }
 #endif
 
@@ -78,6 +99,7 @@ uMenu::uMenu(const tOutput &t,bool exit_item)
     yOffset=0;
     selected = 100000000;
     tapSelected = false;
+    pointerSeen = false;
 }
 
 uMenu::~uMenu(){
@@ -111,6 +133,25 @@ int menuentries=0;
 
 REAL uMenu::YPos(int num){
     return yOffset-text_height*(menuentries-num);
+}
+
+// Which row, if any, is under a normalised screen position. Deliberately a
+// containment test rather than a nearest-row search: with no vertical bound at
+// all, a cursor resting anywhere -- including well below the menu -- maps onto
+// some row, so parking the mouse near the bottom of the screen and clicking
+// would activate whatever happened to be last.
+int uMenu::ItemAt( REAL x, REAL y )
+{
+    // Generous horizontally, because label widths vary and the exact rendered
+    // extent is not tracked; tight vertically, where the ambiguity actually was.
+    static const REAL xReach = .8;
+    for ( int i = items.Len()-1; i >= 0; --i )
+    {
+        if ( fabs( y - YPos(i) ) <= text_height * .5 &&
+             fabs( x - center ) <= xReach )
+            return i;
+    }
+    return -1;
 }
 
 
@@ -164,6 +205,11 @@ void uMenu::OnEnter(){
 
     uCallbackMenuEnter::MenuEnter();
     su_inMenu = true;
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaSetMenuActive === 'function') window.__aaSetMenuActive(true);
+    });
+#endif
 
     if (items.Len()<=0)
         return;
@@ -172,6 +218,7 @@ void uMenu::OnEnter(){
     // A menu object outlives a single visit, so make every entry start needing
     // its own select-then-activate pair rather than inheriting the last one's.
     tapSelected = false;
+    pointerSeen = false;
     yOffset=menuTop;
     REAL lastt=0;
     REAL ts=0;
@@ -372,6 +419,11 @@ void uMenu::OnEnter(){
 
     uCallbackMenuLeave::MenuLeave();
     su_inMenu = false;
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaSetMenuActive === 'function') window.__aaSetMenuActive(false);
+    });
+#endif
 }
 
 void uMenu::HandleEvent( SDL_Event event )
@@ -483,6 +535,7 @@ void uMenu::HandleEvent( SDL_Event event )
             if ( event.button.button == SDL_BUTTON_WHEELUP ||
                  event.button.button == SDL_BUTTON_WHEELDOWN )
             {
+                pointerSeen = true;
                 SDL_Event key = event;
                 key.type = SDL_KEYDOWN;
                 key.key.keysym.sym =
@@ -491,26 +544,38 @@ void uMenu::HandleEvent( SDL_Event event )
                 break;
             }
 
-            // A tap/click selects the closest rendered menu row. Tapping an
-            // already selected row is equivalent to Return, which gives touch
-            // users the familiar tap-to-select, tap-again-to-activate flow.
-            if ( event.button.button == 1 && menuentries > 0 && sr_screenHeight > 0 )
+            if ( event.button.button == 1 && menuentries > 0 &&
+                 sr_screenHeight > 0 && sr_screenWidth > 0 )
             {
+                REAL x = 2 * REAL( event.button.x ) / REAL( sr_screenWidth ) - 1;
                 REAL y = 1 - 2 * REAL( event.button.y ) / REAL( sr_screenHeight );
-                int choice = selected;
-                REAL distance = fabs( y - YPos( choice ) );
-                for ( int i = 0; i < items.Len(); ++i )
+                int hit = ItemAt( x, y );
+
+                if ( hit < 0 )
                 {
-                    REAL candidateDistance = fabs( y - YPos( i ) );
-                    if ( candidateDistance < distance )
+                    // Away from every row. Someone steering with the wheel
+                    // leaves the cursor wherever it happens to sit, so act on
+                    // the current selection -- but never on a touch screen,
+                    // where the tap position is the selection and a stray tap
+                    // must not activate anything.
+                    bool mouseLike = pointerSeen;
+#ifdef __EMSCRIPTEN__
+                    if ( su_CoarsePointer() )
+                        mouseLike = false;
+#endif
+                    if ( mouseLike )
                     {
-                        choice = i;
-                        distance = candidateDistance;
+                        SDL_Event enter = event;
+                        enter.type = SDL_KEYDOWN;
+                        enter.key.keysym.sym = SDLK_RETURN;
+                        HandleEvent( enter );
                     }
                 }
-
-                if ( choice == selected && tapSelected )
+                else if ( hit == selected && tapSelected )
                 {
+                    // On the selected row: activate. Touch reaches this on its
+                    // second tap, having selected with the first; a mouse
+                    // reaches it immediately, because hovering already selected.
                     SDL_Event enter = event;
                     enter.type = SDL_KEYDOWN;
                     enter.key.keysym.sym = SDLK_RETURN;
@@ -518,7 +583,27 @@ void uMenu::HandleEvent( SDL_Event event )
                 }
                 else
                 {
-                    selected = choice;
+                    selected = hit;
+                    tapSelected = true;
+                    lastkey = tSysTimeFloat();
+                }
+            }
+            break;
+        }
+        case SDL_MOUSEMOTION:
+        {
+            // Hovering a row selects it. Crucially, moving anywhere else leaves
+            // the selection alone, so a cursor drifting off to the side no
+            // longer drags the highlight around with it.
+            pointerSeen = true;
+            if ( menuentries > 0 && sr_screenHeight > 0 && sr_screenWidth > 0 )
+            {
+                REAL x = 2 * REAL( event.motion.x ) / REAL( sr_screenWidth ) - 1;
+                REAL y = 1 - 2 * REAL( event.motion.y ) / REAL( sr_screenHeight );
+                int hit = ItemAt( x, y );
+                if ( hit >= 0 && hit != selected )
+                {
+                    selected = hit;
                     tapSelected = true;
                     lastkey = tSysTimeFloat();
                 }

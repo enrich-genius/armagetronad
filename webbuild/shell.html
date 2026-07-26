@@ -3,31 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Armagetron Advanced — Play the 3D Tron Lightcycle Game in Your Browser</title>
-  <meta name="description" content="Play Armagetron Advanced, the classic 3D Tron lightcycle game, free in your browser. No install — a WebAssembly port of the open-source original. Steer your cycle, cut off opponents, and survive the light trails.">
-  <meta name="keywords" content="Armagetron Advanced, Tron, lightcycle, light cycle game, WebAssembly, WASM, browser game, 3D Tron, online multiplayer, free game, snake game 3D">
-  <meta name="author" content="Armagetron Advanced project">
+  <title>Wasmageddon — Browser-Native Multiplayer Grid Arena</title>
+  <meta name="description" content="Wasmageddon is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.">
+  <meta name="keywords" content="Wasmageddon, Armagetron Advanced, grid arena, lightcycle, light cycle game, WebAssembly, WASM, browser game, multiplayer, mobile browser game">
+  <meta name="author" content="Enrich Genius">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://armagetronad.enrichgenius.com/">
   <meta name="theme-color" content="#0a0a12">
 
   <!-- Open Graph / social sharing -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Armagetron Advanced — 3D Tron Lightcycle Game in Your Browser">
-  <meta property="og:description" content="Play the classic 3D Tron lightcycle game free in your browser. A WebAssembly port of the open-source original — no install required.">
+  <meta property="og:title" content="Wasmageddon — Browser-Native Multiplayer Grid Arena">
+  <meta property="og:description" content="An independent WebAssembly port built from the open-source Armagetron Advanced project, bringing multiplayer arena gameplay to desktop and mobile browsers.">
   <meta property="og:url" content="https://armagetronad.enrichgenius.com/">
-  <meta property="og:site_name" content="Armagetron Advanced (Web)">
+  <meta property="og:site_name" content="Wasmageddon">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Armagetron Advanced — 3D Tron Lightcycle Game in Your Browser">
-  <meta name="twitter:description" content="Play the classic 3D Tron lightcycle game free in your browser. A WebAssembly port of the open-source original.">
+  <meta name="twitter:title" content="Wasmageddon — Browser-Native Multiplayer Grid Arena">
+  <meta name="twitter:description" content="An independent WebAssembly port built from the open-source Armagetron Advanced project for desktop and mobile browsers.">
 
   <!-- Structured data for search engines -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "VideoGame",
-    "name": "Armagetron Advanced",
-    "description": "A 3D Tron lightcycle game, ported to WebAssembly to run in the browser. Steer your lightcycle, trap opponents behind walls of light, and be the last one riding.",
+    "name": "Wasmageddon",
+    "description": "Wasmageddon is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.",
     "genre": ["Action", "Arcade", "Racing"],
     "applicationCategory": "Game",
     "operatingSystem": "Web browser",
@@ -47,10 +47,14 @@
     #loading { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; background: #0a0a12; text-align: center; padding: 1rem; transition: opacity .4s ease; }
     #loading.done { opacity: 0; pointer-events: none; }
     #loading h1 { margin: 0; font-size: clamp(1.1rem, 4.5vw, 1.9rem); font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: #8ddcff; text-shadow: 0 0 18px rgba(74,170,221,.55); }
+    #tagline { max-width: min(32rem, 86vw); margin: -.55rem 0 0; font-size: .82rem; color: #d8f7ff; opacity: .82; }
+    #port-note { max-width: min(34rem, 88vw); margin: -.35rem 0 0; font-size: .72rem; line-height: 1.4; color: #a9c8d6; opacity: .72; }
+    #sponsor { font-size: .72rem; color: #9fd8ff; opacity: .78; text-transform: uppercase; letter-spacing: .12em; animation: sponsor-fly 2.8s ease 1.2s forwards; }
     /* A light cycle tracing its trail around the ring. */
     #spinner { width: 3.4rem; height: 3.4rem; border-radius: 50%; border: 3px solid #1a2a3a; border-top-color: #4ad; border-right-color: #8ddcff; animation: spin 900ms linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { #spinner { animation-duration: 2.4s; } }
+    @keyframes sponsor-fly { to { opacity: 0; transform: translateY(-1.4rem); } }
+    @media (prefers-reduced-motion: reduce) { #spinner { animation-duration: 2.4s; } #sponsor { animation: none; } }
     #status { font-size: .82rem; opacity: .75; min-height: 1.2em; }
     #progress { width: min(260px, 70vw); height: 4px; background: #1a1a2a; border-radius: 2px; overflow: hidden; }
     #progress > div { height: 100%; width: 0; background: #4ad; transition: width .2s; }
@@ -72,10 +76,12 @@
       #touch-controls { position: absolute; inset: 0; z-index: 1; display: block; pointer-events: none; touch-action: none; }
       /* Lifted clear of the in-game HUD (speed, rubber and brake gauges) that
          the engine draws along the bottom edge. */
-      .touch-button { position: absolute; bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+      .touch-button { position: absolute; width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
       .touch-button:active { background: rgba(60,112,150,.9); }
-      #touch-left { left: max(1rem, env(safe-area-inset-left)); }
-      #touch-right { left: max(6.25rem, calc(env(safe-area-inset-left) + 5.25rem)); }
+      #touch-left { left: max(1rem, env(safe-area-inset-left)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); }
+      #touch-right { left: max(6.25rem, calc(env(safe-area-inset-left) + 5.25rem)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); }
+      #touch-up { left: max(3.625rem, calc(env(safe-area-inset-left) + 2.625rem)); bottom: max(9.75rem, calc(env(safe-area-inset-bottom) + 8.75rem)); }
+      #touch-down { left: max(3.625rem, calc(env(safe-area-inset-left) + 2.625rem)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); }
       #touch-brake { right: max(1rem, env(safe-area-inset-right)); font-size: .75rem; }
       #touch-select { right: max(6.25rem, calc(env(safe-area-inset-right) + 5.25rem)); font-size: .72rem; }
       /* Escape: opens the in-game menu, and backs out of menus. */
@@ -83,6 +89,7 @@
     }
     #touch-menu { display: none; }
     @media (hover: none) and (pointer: coarse) { #touch-menu { display: block; } }
+    #mobile-chat-input { position: fixed; left: -100vw; top: 0; width: 1px; height: 1px; opacity: .01; }
     /* In fullscreen the canvas is the only thing on screen. */
     #wrap:fullscreen #bar { display: none; }
   </style>
@@ -93,13 +100,19 @@
     <div id="touch-controls" aria-label="Touch controls">
       <button id="touch-left" class="touch-button" aria-label="Turn left">←</button>
       <button id="touch-right" class="touch-button" aria-label="Turn right">→</button>
+      <button id="touch-up" class="touch-button" aria-label="Menu up">↑</button>
+      <button id="touch-down" class="touch-button" aria-label="Menu down">↓</button>
       <button id="touch-select" class="touch-button" aria-label="Select menu item">SELECT</button>
       <button id="touch-brake" class="touch-button" aria-label="Brake">BRAKE</button>
-      <button id="touch-menu" aria-label="Menu">MENU</button>
+      <button id="touch-menu" aria-label="Menu">BACK</button>
     </div>
+    <input id="mobile-chat-input" autocomplete="off" autocapitalize="sentences" spellcheck="false" aria-label="Chat input">
     <div id="loading">
-      <h1>Armagetron Advanced</h1>
+      <h1>Wasmageddon</h1>
+      <p id="tagline">A browser-native multiplayer grid arena</p>
+      <p id="port-note">Independent WebAssembly port built from the open-source Armagetron Advanced project for desktop and mobile browsers.</p>
       <div id="spinner" role="progressbar" aria-label="Loading"></div>
+      <div id="sponsor">Brought to you by Enrich Genius</div>
       <div id="status">Loading…</div>
       <div id="progress"><div id="progress-bar"></div></div>
     </div>
@@ -122,6 +135,8 @@
     var toolbarEl = document.getElementById('bar');
     var canvas = document.getElementById('canvas');
     var wrap = document.getElementById('wrap');
+    var touchMenuButton = document.getElementById('touch-menu');
+    var mobileChatInput = document.getElementById('mobile-chat-input');
     // Replaced by build.sh. Keep the generated JS, wasm, and data package on
     // one cache generation: mixing an old loader with a new wasm binary makes
     // WebAssembly instantiation fail with missing imports.
@@ -242,6 +257,10 @@
     });
     setInterval(persist, 10000);
     canvas.addEventListener('click', function () { canvas.focus(); });
+    window.__aaSetMenuActive = function (active) {
+      touchMenuButton.textContent = active ? 'BACK' : 'MENU';
+      touchMenuButton.setAttribute('aria-label', active ? 'Back' : 'Menu');
+    };
 
     // Menus swap their contents under a resting finger, so a menu activation
     // only counts once per cooldown and only after a real lift. Steering is
@@ -292,9 +311,46 @@
     }
     bindTouchKey('touch-left', 'ArrowLeft', 'ArrowLeft', 37);
     bindTouchKey('touch-right', 'ArrowRight', 'ArrowRight', 39);
+    bindTouchKey('touch-up', 'ArrowUp', 'ArrowUp', 38);
+    bindTouchKey('touch-down', 'ArrowDown', 'ArrowDown', 40);
     bindTouchKey('touch-brake', 'ArrowDown', 'ArrowDown', 40);
     bindTouchKey('touch-select', 'Enter', 'Enter', 13, true);
     bindTouchKey('touch-menu', 'Escape', 'Escape', 27, true);
+
+    function sendTextChar(ch) {
+      var keyCode = ch.length === 1 ? ch.charCodeAt(0) : 0;
+      sendVirtualKey('keydown', ch, '', keyCode);
+      sendVirtualKey('keypress', ch, '', keyCode);
+      sendVirtualKey('keyup', ch, '', keyCode);
+    }
+    function openMobileChatKeyboard() {
+      sendVirtualKey('keydown', 'Enter', 'Enter', 13);
+      sendVirtualKey('keyup', 'Enter', 'Enter', 13);
+      mobileChatInput.value = '';
+      mobileChatInput.focus({ preventScroll: true });
+    }
+    mobileChatInput.addEventListener('input', function () {
+      var text = mobileChatInput.value;
+      mobileChatInput.value = '';
+      for (var i = 0; i < text.length; i++) sendTextChar(text.charAt(i));
+    });
+    mobileChatInput.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendVirtualKey('keydown', 'Enter', 'Enter', 13);
+        sendVirtualKey('keyup', 'Enter', 'Enter', 13);
+        mobileChatInput.blur();
+      } else if (event.key === 'Backspace') {
+        event.preventDefault();
+        sendVirtualKey('keydown', 'Backspace', 'Backspace', 8);
+        sendVirtualKey('keyup', 'Backspace', 'Backspace', 8);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        sendVirtualKey('keydown', 'Escape', 'Escape', 27);
+        sendVirtualKey('keyup', 'Escape', 'Escape', 27);
+        mobileChatInput.blur();
+      }
+    });
 
     // SDL 1 receives mouse events, not touch events. Convert a canvas tap to
     // one mouse-down event; uMenu uses it to select the tapped row (or accept
@@ -310,10 +366,19 @@
     var SWIPE_PX = 38;
     var tapPointerId = null;
     var swipeOriginX = 0, swipeOriginY = 0, swiped = false;
+    var activeTouchPointers = new Set();
+    var threeFingerChatOpened = false;
 
     canvas.addEventListener('pointerdown', function (event) {
       if (event.pointerType !== 'touch') return;
       event.preventDefault();
+      activeTouchPointers.add(event.pointerId);
+      if (!threeFingerChatOpened && activeTouchPointers.size >= 3) {
+        threeFingerChatOpened = true;
+        tapPointerId = null;
+        openMobileChatKeyboard();
+        return;
+      }
       // Ignore additional fingers while one is already down.
       if (tapPointerId !== null) return;
       tapPointerId = event.pointerId;
@@ -349,8 +414,15 @@
         clientX: event.clientX, clientY: event.clientY
       }));
     }
-    canvas.addEventListener('pointerup', endCanvasTap);
-    canvas.addEventListener('pointercancel', endCanvasTap);
+    function endTouchPointer(event) {
+      if (event.pointerType === 'touch') {
+        activeTouchPointers.delete(event.pointerId);
+        if (activeTouchPointers.size === 0) threeFingerChatOpened = false;
+      }
+      endCanvasTap(event);
+    }
+    canvas.addEventListener('pointerup', endTouchPointer);
+    canvas.addEventListener('pointercancel', endTouchPointer);
 
     canvas.focus();
   </script>

@@ -292,12 +292,6 @@ static void sg_ScreenModeMenu()
 {
     uMenu screen_menu_mode("$screen_mode_menu");
 
-    uMenuItemFunction appl
-    (&screen_menu_mode,
-     "$screen_apply_changes_text",
-     "$screen_apply_changes_help",
-     &sr_ReinitDisplay);
-
     uMenuItemToggle kwa_t(
         &screen_menu_mode,
         "$screen_keep_window_active_text",
@@ -346,16 +340,6 @@ static void sg_ScreenModeMenu()
     uSelectEntry<rColorDepth> cd_16(cd_t,"$screen_colordepth_16_text","$screen_colordepth_16_help",ArmageTron_ColorDepth_16);
     uSelectEntry<rColorDepth> cd_d(cd_t,"$screen_colordepth_desk_text","$screen_colordepth_desk_help",ArmageTron_ColorDepth_Desktop);
     uSelectEntry<rColorDepth> cd_32(cd_t,"$screen_colordepth_32_text","$screen_colordepth_32_help",ArmageTron_ColorDepth_32);
-
-    uMenuItemToggle fs_t
-    (&screen_menu_mode,
-     "$screen_fullscreen_text",
-     "$screen_fullscreen_help",
-     currentScreensetting.fullscreen);
-
-
-    gResMenEntry res( screen_menu_mode, currentScreensetting.res, "$screen_resolution_text", "$screen_resolution_help", false );
-    gResMenEntry winsize( screen_menu_mode, currentScreensetting.windowSize, "$window_size_text", "$window_size_help", true );
 
     /*
     uMenuItemSelection<rResolution> res_men

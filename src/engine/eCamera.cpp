@@ -1432,7 +1432,15 @@ void eCamera::Render(){
                           fabs(CenterZ() - z)>1);
 
         tJUST_CONTROLLED_PTR< eGameObject > c=Center();
+#ifndef __EMSCRIPTEN__
         if (!draw_center && c) c->RemoveFromList();
+#else
+        // WebGL's fixed-function emulation can lose the center-view cycle when
+        // it is temporarily removed from the normal render list. Keep it in
+        // the main pass for the browser build so the centered camera does not
+        // render as an empty view while side views still work.
+        draw_center = true;
+#endif
 
         eCoord poscopy = pos;
         zNear = - eWallRim::Bound( poscopy, 0.0f );
@@ -1448,7 +1456,9 @@ void eCamera::Render(){
         }
 
         if (c) c->RenderCockpitVirtual();
+#ifndef __EMSCRIPTEN__
         if (!draw_center && c) c->AddToList();
+#endif
 
         /*
           glDisable(GL_TEXTURE);
@@ -2243,5 +2253,4 @@ void eCamera::CenterCockpitFixedAfter() const{
     else
         return;
 }
-
 
