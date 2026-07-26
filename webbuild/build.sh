@@ -135,7 +135,36 @@ emcc "${CXXFLAGS[@]}" "${INCLUDES[@]}" "${LDFLAGS[@]}" \
 # the loader and every locateFile asset so Cloudflare/browser caches can never
 # combine a JavaScript loader from one build with wasm/data from another.
 BUILD_VERSION="$(date -u +%Y%m%d%H%M%S)"
-sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g; s/src=armagetronad\\.js/src=armagetronad.js?v=${BUILD_VERSION}/g" \
+
+# Bake the real asset sizes in so the loading bar can weight the two downloads
+# against each other. The wasm is the larger half and emscripten reports no
+# progress for it at all, so without this the bar only ever tracked the data
+# package and appeared to stall for the rest of the load.
+WASM_BYTES="$(stat -c%s "$OUT/armagetronad.wasm")"
+DATA_BYTES="$(stat -c%s "$OUT/armagetronad.data" 2>/dev/null || echo 0)"
+
+sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g; \
+        s/__WASM_BYTES__/${WASM_BYTES}/g; \
+        s/__DATA_BYTES__/${DATA_BYTES}/g; \
+        s/src=armagetronad\\.js/src=armagetronad.js?v=${BUILD_VERSION}/g" \
   "$OUT/armagetronad.html"
 
+# Cloudflare Pages headers. Every asset URL carries ?v=<build>, so a given URL
+# is immutable and can be cached hard -- that is what stops a returning player
+# re-downloading ~6 MB for a build they already have. The HTML must not be
+# cached, since it is what carries the new version string.
+cat > "$OUT/_headers" <<'HEADERS'
+/armagetronad.wasm
+  Cache-Control: public, max-age=31536000, immutable
+/armagetronad.data
+  Cache-Control: public, max-age=31536000, immutable
+/armagetronad.js
+  Cache-Control: public, max-age=31536000, immutable
+/armagetronad.html
+  Cache-Control: public, max-age=0, must-revalidate
+/
+  Cache-Control: public, max-age=0, must-revalidate
+HEADERS
+
 echo "Build complete: $OUT/armagetronad.html"
+echo "  wasm ${WASM_BYTES} bytes, data ${DATA_BYTES} bytes, version ${BUILD_VERSION}"

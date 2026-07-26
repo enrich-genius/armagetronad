@@ -235,6 +235,15 @@ public:
                         dist = zDist;
                     }
                     // TODO: better criterion for ingoring of walls
+#ifdef __EMSCRIPTEN__
+                    // A tiny near plane worked on desktop GL, but WebGL/GLES
+                    // loses too much depth precision with the huge far plane
+                    // this renderer uses. That shows up near walls as purple
+                    // tinting and see-through wall/floor z-fighting.
+                    static const REAL minWebNear = 0.05f;
+                    if ( dist < minWebNear )
+                        dist = minWebNear;
+#endif
                     if ( dist < zNear && dist > 0.001f )
                     {
                         zNear = dist;
@@ -722,5 +731,4 @@ void eViewerCrossesEdge::Render(){
 */
 
 #endif
-
 

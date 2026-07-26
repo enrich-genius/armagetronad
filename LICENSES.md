@@ -40,8 +40,12 @@ The deployed client is built from this repository. `webbuild/dist/` is committed
 alongside the sources it was built from, so any deployed commit is also the
 source for that deployment.
 
-A source link is exposed from the running application via the GitHub link in the
-page toolbar.
+A source link is exposed from the running application in the **About** panel,
+reachable from the game chrome, alongside a pointer to this document and a
+statement of the port's independent status. The link is deliberately not in the
+always-visible chrome, but it must remain reachable from the running game: that
+panel is how players are offered the corresponding source, so it is a licensing
+surface and not only a cosmetic one.
 
 ## Reproducing the build
 

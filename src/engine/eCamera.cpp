@@ -1454,6 +1454,12 @@ void eCamera::Render(){
         {
             zNear = 0.0001f;
         }
+#ifdef __EMSCRIPTEN__
+        if ( zNear < 0.05f )
+        {
+            zNear = 0.05f;
+        }
+#endif
 
         if (c) c->RenderCockpitVirtual();
 #ifndef __EMSCRIPTEN__
@@ -2253,4 +2259,3 @@ void eCamera::CenterCockpitFixedAfter() const{
     else
         return;
 }
-

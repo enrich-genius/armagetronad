@@ -1121,6 +1121,12 @@ void sr_DepthOffset(bool offset){
     //  if(offset!=offs){
     //offs=offset;
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // WebGL/GLES depth precision gets unstable with this renderer's very large
+    // far plane when polygon offset is also active near walls.
+    if (offset)
+        return;
+#endif
     if (offset){
         //glMatrixMode(GL_PROJECTION);
         //glScalef(.9,.9,.9);
@@ -1196,4 +1202,3 @@ void rCallbackAfterScreenModeChange::Exec()
 {
     tCallback::Exec(sr_AfterAnchor);
 }
-

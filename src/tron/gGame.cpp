@@ -1767,8 +1767,6 @@ void RenderAllViewports(eGrid *grid){
     rViewportConfiguration *conf=rViewportConfiguration::CurrentViewportConfiguration();
 
     if(sr_glOut){
-        sr_ResetRenderState();
-
         // enable distance based fog
         /*
         glFogi( GL_FOG_MODE, GL_EXP );
@@ -1782,12 +1780,21 @@ void RenderAllViewports(eGrid *grid){
 
         for(int i=cameras.Len()-1;i>=0;i--){
             int p=sr_viewportBelongsToPlayer[i];
+            sr_ResetRenderState();
             conf->Select(i);
+#ifdef __EMSCRIPTEN__
+            rViewport *selected=conf->Port(i);
+            if (selected)
+                selected->ClearDepth();
+#endif
             rViewport *act=conf->Port(i);
             if (act && ePlayer::PlayerConfig(p))
                 ePlayer::PlayerConfig(p)->Render();
             else con << "hey! viewport " << i << " does not exist!\n";
         }
+#ifdef __EMSCRIPTEN__
+        glDisable(GL_SCISSOR_TEST);
+#endif
 
         // glDisable( GL_FOG );
     }

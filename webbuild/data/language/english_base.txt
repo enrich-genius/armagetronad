@@ -1283,9 +1283,9 @@ game_menu_disconnect_help	Disconnects from the server and returns to the main me
 #
 #********************************************
 #********************************************
-version_info_title              About this installation of \g
+version_info_title              About Wasmageddon
 version_info_version            Version of \g: \1
-version_info_misc_stuff         \n0xff8888Official website:0xRESETT http://armagetronad.net/\n0xff8888Official forums:0xRESETT https://forums3.armagetronad.net/\n0xff8888Wiki (strategies, tournaments, ...):0xRESETT http://wiki.armagetronad.net/\n0xff8888Project admins:0xRESETT z-man, Tank Program (guru3), Lucifer
+version_info_misc_stuff         \n0xff8888Wasmageddon:0xRESETT A browser-native multiplayer grid arena.\n\nWasmageddon is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.\n\n0xff8888Source code on GitHub:0xRESETT https://github.com/enrich-genius/armagetronad\nThe exact source this build was made from.\n\n0xff8888Licensing:0xRESETT https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/LICENSES.md\nGPL-2.0-or-later, and how to reproduce this build.\n\n0xff8888Contributing:0xRESETT https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/CONTRIBUTING.md\nHelp port open-source games to WebAssembly.\n\nArmagetron Advanced is the work of its own authors and contributors. Wasmageddon is not affiliated with, nor endorsed by, the Armagetron Advanced project, Disney, or any Tron rights holder.\n\nBrought to you by Enrich Genius, a platform for ported browser games.
 
 path_info_user_cfg              Location of user.cfg:
 path_info_config                Configuration directories:
@@ -1598,12 +1598,12 @@ masters_menu_connect        Browse \1
 masters_menu_edit_connect_text	Browse Subculture
 masters_menu_edit_connect_help	Opens a master server like server browser specialized for servers of this subculture.
 
-friends_menu				Mates
-friends_menu_help			Edit your mates.
-friends_enable				Mates Enabled
-friends_enable_help			Turn on/off mates filtering.
-enable_friends_help			Turn on/off mates filtering.
-friend_word					Mate
+friends_menu				Friends
+friends_menu_help			Edit your friends.
+friends_enable				Friends Enabled
+friends_enable_help			Turn on/off friends filtering.
+enable_friends_help			Turn on/off friends filtering.
+friend_word					Friend
 friend_help					If a server has this name on its players list, it will show when filtering is on.
 
 #********************************************
@@ -2731,7 +2731,7 @@ network_master_servername	Server Name
 network_master_score		Score
 network_master_users		Users
 network_master_ping		Ping
-network_master_browserhelp	Press "Enter" to connect to this server, "p" to refresh a single server, "r" to refresh the whole list, "+/-" to set the score bias for this server, "cursor left/right" to change the sorting key, or "b" to add the server to your bookmarks. "m" toggles mates filtering.
+network_master_browserhelp	Press "Enter" to connect to this server, "p" to refresh a single server, "r" to refresh the whole list, "+/-" to set the score bias for this server, "cursor left/right" to change the sorting key, or "b" to add the server to your bookmarks. "m" toggles friends filtering.
 network_master_connecting	Connecting to \1...\n
 network_master_send		Sending my server info...\n
 network_master_reqlist		Requesting server list...\n

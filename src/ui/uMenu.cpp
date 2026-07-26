@@ -439,6 +439,25 @@ void uMenu::HandleEvent( SDL_Event event )
             switch (event.key.keysym.sym){
 
             case(SDLK_ESCAPE):
+#ifdef __EMSCRIPTEN__
+                {
+                    bool hasExitItem = false;
+                    for ( int i = items.Len()-1; i >= 0; --i )
+                    {
+                        if ( dynamic_cast< uMenuItemExit * >( items[i] ) )
+                        {
+                            hasExitItem = true;
+                            break;
+                        }
+                    }
+                    if ( !hasExitItem )
+                    {
+                        s_globalRepeat = false;
+                        lastkey=tSysTimeFloat();
+                        break;
+                    }
+                }
+#endif
                 s_globalRepeat = false;
                 lastkey=tSysTimeFloat();
                 Exit();

@@ -138,8 +138,11 @@ void rFont::OnSelect( bool enforce )
     }
 
 #ifndef DEDICATED
-    // wrap around so we can use the transparent pixel on the right side on the left
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    // Text atlases must not repeat into later world passes. WebGL is especially
+    // strict about leaked texture state, and repeated glyphs can show up on the
+    // floor/background if the font texture remains active.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 #endif
 }
 
@@ -537,6 +540,7 @@ rTextField & rTextField::StringOutput(const char * c, ColorMode colorMode )
     }
 
     RenderEnd( true );
+    glDisable(GL_TEXTURE_2D);
 #endif
 
     return *this;
@@ -702,4 +706,3 @@ void rTextField::SetBlendColor( tColor const & blendColor )
 
 tColor rTextField::defaultColor_;
 tColor rTextField::blendColor_;
-

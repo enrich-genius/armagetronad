@@ -48,6 +48,19 @@ void rViewport::Select(){
                     GLsizei(sr_screenWidth*width),
                     GLsizei(sr_screenHeight*height));
 }
+
+void rViewport::ClearDepth(){
+    if (sr_glOut)
+    {
+        GLsizei x = GLsizei(sr_screenWidth  * left);
+        GLsizei y = GLsizei(sr_screenHeight * bottom);
+        GLsizei w = GLsizei(sr_screenWidth  * width);
+        GLsizei h = GLsizei(sr_screenHeight * height);
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(x, y, w, h);
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
+}
 #endif
 
 
@@ -370,5 +383,4 @@ rViewport rViewport::CorrectAspectBottom( void ) const
 
     return ret;
 }
-
 

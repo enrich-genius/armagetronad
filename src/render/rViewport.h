@@ -48,6 +48,7 @@ public:
 
 #ifndef DEDICATED
     void Select();
+    void ClearDepth();
 #endif
 
     void Perspective(REAL fov,REAL zNear=1,REAL zFar=10000000);
@@ -103,6 +104,5 @@ public:
 };
 
 #endif
-
 
 

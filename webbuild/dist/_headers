@@ -1,8 +1,10 @@
-/armagetronad.js
-  Cache-Control: no-store
-
 /armagetronad.wasm
-  Cache-Control: no-store
-
+  Cache-Control: public, max-age=31536000, immutable
 /armagetronad.data
-  Cache-Control: no-store
+  Cache-Control: public, max-age=31536000, immutable
+/armagetronad.js
+  Cache-Control: public, max-age=31536000, immutable
+/armagetronad.html
+  Cache-Control: public, max-age=0, must-revalidate
+/
+  Cache-Control: public, max-age=0, must-revalidate
