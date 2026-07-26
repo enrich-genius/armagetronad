@@ -215,11 +215,20 @@
       canvas.focus();
     });
 
+    // Writing the config only puts it in the in-memory FS; this is what moves
+    // it into IndexedDB so it survives a reload.
+    function persist() {
+      try { FS.syncfs(false, function () {}); } catch (e) {}
+    }
     // 'pagehide' rather than the deprecated unload events; it also fires when
     // the tab is merely backgrounded, so settings survive being swapped out.
-    window.addEventListener('pagehide', function () {
-      try { FS.syncfs(false, function () {}); } catch (e) {}
+    window.addEventListener('pagehide', persist);
+    // A phone can lose the tab without ever firing pagehide, so also flush on
+    // the way to the background and on a slow timer.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') persist();
     });
+    setInterval(persist, 10000);
     canvas.addEventListener('click', function () { canvas.focus(); });
 
     // Menus swap their contents under a resting finger, so a menu activation

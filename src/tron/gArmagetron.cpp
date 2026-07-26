@@ -387,6 +387,14 @@ static void welcome(){
 
     st_FirstUse=false;
 
+#ifdef __EMSCRIPTEN__
+    // The browser never reaches the exit path that normally writes the config,
+    // because MainMenu() does not return and there is no SDL_QUIT. Without this
+    // the language, name, colour and key layout just chosen are lost on reload
+    // and the player is asked to set them up again on every visit.
+    st_SaveConfig();
+#endif
+
     sr_textOut = textOutBack;
     uMenu::Message( tOutput("$welcome_message_heading"), tOutput("$welcome_message"), 300 );
 
