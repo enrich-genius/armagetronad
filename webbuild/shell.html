@@ -292,18 +292,46 @@
     // The tap is emitted on release, and only for a pointer that went down on
     // the canvas in the first place, so a finger already resting on the screen
     // when a new menu appears cannot activate whatever lands under it.
+    // Dragging sideways steers, which beats hunting for a button mid-round. The
+    // gesture is measured from a moving origin so a long drag can fire several
+    // turns, and a swipe cancels the tap that would otherwise land on release.
+    var SWIPE_PX = 38;
     var tapPointerId = null;
+    var swipeOriginX = 0, swipeOriginY = 0, swiped = false;
+
     canvas.addEventListener('pointerdown', function (event) {
       if (event.pointerType !== 'touch') return;
       event.preventDefault();
       // Ignore additional fingers while one is already down.
-      if (tapPointerId === null) tapPointerId = event.pointerId;
+      if (tapPointerId !== null) return;
+      tapPointerId = event.pointerId;
+      swipeOriginX = event.clientX;
+      swipeOriginY = event.clientY;
+      swiped = false;
     });
+
+    canvas.addEventListener('pointermove', function (event) {
+      if (event.pointerType !== 'touch' || tapPointerId !== event.pointerId) return;
+      var dx = event.clientX - swipeOriginX;
+      var dy = event.clientY - swipeOriginY;
+      if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return;
+      event.preventDefault();
+      swiped = true;
+      var right = dx > 0;
+      sendVirtualKey('keydown', right ? 'ArrowRight' : 'ArrowLeft',
+                     right ? 'ArrowRight' : 'ArrowLeft', right ? 39 : 37);
+      sendVirtualKey('keyup', right ? 'ArrowRight' : 'ArrowLeft',
+                     right ? 'ArrowRight' : 'ArrowLeft', right ? 39 : 37);
+      // Re-anchor so continuing the drag can turn again.
+      swipeOriginX = event.clientX;
+      swipeOriginY = event.clientY;
+    });
+
     function endCanvasTap(event) {
       if (event.pointerType !== 'touch' || tapPointerId !== event.pointerId) return;
       tapPointerId = null;
       event.preventDefault();
-      if (event.type !== 'pointerup' || !menuTapAllowed()) return;
+      if (swiped || event.type !== 'pointerup' || !menuTapAllowed()) return;
       canvas.dispatchEvent(new MouseEvent('mousedown', {
         bubbles: true, cancelable: true, button: 0, buttons: 1,
         clientX: event.clientX, clientY: event.clientY
