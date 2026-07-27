@@ -51,13 +51,17 @@
     #port-note { max-width: min(34rem, 88vw); margin: -.35rem 0 0; font-size: .72rem; line-height: 1.4; color: #a9c8d6; opacity: .72; }
     #sponsor { font-size: .72rem; color: #9fd8ff; opacity: .78; text-transform: uppercase; letter-spacing: .12em; animation: sponsor-fly 2.8s ease 1.2s forwards; }
     /* A light cycle tracing its trail around the ring. */
-    #spinner { width: 3.4rem; height: 3.4rem; border-radius: 50%; border: 3px solid #1a2a3a; border-top-color: #4ad; border-right-color: #8ddcff; animation: spin 900ms linear infinite; }
+    #spinner, #join-spinner { width: 3.4rem; height: 3.4rem; border-radius: 50%; border: 3px solid #1a2a3a; border-top-color: #4ad; border-right-color: #8ddcff; animation: spin 900ms linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes sponsor-fly { to { opacity: 0; transform: translateY(-1.4rem); } }
-    @media (prefers-reduced-motion: reduce) { #spinner { animation-duration: 2.4s; } #sponsor { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { #spinner, #join-spinner { animation-duration: 2.4s; } #sponsor { animation: none; } }
     #status { font-size: .82rem; opacity: .75; min-height: 1.2em; }
     #progress { width: min(260px, 70vw); height: 4px; background: #1a1a2a; border-radius: 2px; overflow: hidden; }
     #progress > div { height: 100%; width: 0; background: #4ad; transition: width .2s; }
+    #join-loading { position: absolute; inset: 0; z-index: 5; display: none; flex-direction: column; align-items: center; justify-content: center; gap: .9rem; background: rgba(6, 6, 14, .78); text-align: center; padding: 1rem; pointer-events: auto; }
+    #join-loading.open { display: flex; }
+    #join-loading .join-title { margin: 0; font-size: clamp(1rem, 4vw, 1.5rem); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #8ddcff; text-shadow: 0 0 18px rgba(74,170,221,.55); }
+    #join-loading .join-detail { margin: -.35rem 0 0; max-width: min(28rem, 86vw); color: #cfe; opacity: .78; font-size: .84rem; }
     button { font: inherit; padding: .25rem .8rem; border: 1px solid #345; border-radius: 4px; background: #1b2233; color: #cfe; cursor: pointer; }
     button:hover { background: #243049; }
     /* The bar carries only the floating controls; it never has a background. */
@@ -137,6 +141,11 @@
       <div id="status">Loading…</div>
       <div id="progress"><div id="progress-bar"></div></div>
     </div>
+    <div id="join-loading" aria-live="polite" aria-busy="true">
+      <div id="join-spinner" role="progressbar" aria-label="Joining match"></div>
+      <p id="join-title" class="join-title">Joining Match</p>
+      <p id="join-detail" class="join-detail">Opening the relay connection...</p>
+    </div>
     <div id="room" class="overlay" role="dialog" aria-modal="true" aria-labelledby="room-title">
       <div class="panel">
         <h2 id="room-title">Host Match</h2>
@@ -204,6 +213,21 @@
       // Leave it in the layer until the fade finishes, then stop compositing it.
       setTimeout(function () { loadingEl.style.display = 'none'; }, 500);
     }
+    var joinLoadingEl = document.getElementById('join-loading');
+    var joinTitleEl = document.getElementById('join-title');
+    var joinDetailEl = document.getElementById('join-detail');
+    window.__aaShowJoinLoading = function (title, detail) {
+      joinTitleEl.textContent = title || 'Joining Match';
+      joinDetailEl.textContent = detail || 'Opening the relay connection...';
+      joinLoadingEl.classList.add('open');
+    };
+    window.__aaUpdateJoinLoading = function (detail) {
+      if (detail) joinDetailEl.textContent = detail;
+      joinLoadingEl.classList.add('open');
+    };
+    window.__aaHideJoinLoading = function () {
+      joinLoadingEl.classList.remove('open');
+    };
     var statusEl = document.getElementById('status');
     var barEl = document.getElementById('progress-bar');
     var toolbarEl = document.getElementById('bar');
