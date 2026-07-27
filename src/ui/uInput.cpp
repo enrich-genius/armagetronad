@@ -88,6 +88,47 @@ uAction * uAction::Find( char const * name )
     return 0;
 }
 
+#ifdef __EMSCRIPTEN__
+//! translate an SDL 1.2 key symbol from a config file to this build's value
+//
+// The key configs shipped with the game spell their non-printable keys as raw
+// SDL 1.2 numbers -- 274 for cursor down, and so on. Emscripten's SDL headers do
+// not use SDL 1.2 numbering for those: they are scancode based, so cursor down
+// is SDL_SCANCODE_DOWN | (1<<10) = 1105. Printable keys are unaffected, which is
+// why Return and Escape always worked and only the special keys were dead.
+//
+// Translating here, where the config is parsed, keeps one set of key files
+// working for every build. Doing it in the browser's key event instead -- which
+// is what this port used to do -- makes the events disagree with the headers,
+// and then the menus stop matching their own SDLK_UP/SDLK_DOWN cases.
+//
+// Safe to apply unconditionally: this build never produces a key symbol in the
+// SDL 1.2 special range itself, so a value that is already translated, such as
+// one read back from a saved config, passes through untouched.
+static int su_TranslateLegacyKeysym( int keysym )
+{
+    struct Legacy { int sdl12; int scancode; };
+    static const Legacy legacy[] = {
+        { 273, 82 }, { 274, 81 }, { 275, 79 }, { 276, 80 },       // cursor keys
+        { 277, 73 }, { 278, 74 }, { 279, 77 },                    // insert, home, end
+        { 280, 75 }, { 281, 78 }, { 127, 76 },                    // page up/down, delete
+        { 256, 98 }, { 257, 89 }, { 258, 90 }, { 259, 91 },       // keypad 0-3
+        { 260, 92 }, { 261, 93 }, { 262, 94 }, { 263, 95 },       // keypad 4-7
+        { 264, 96 }, { 265, 97 }, { 266, 99 }, { 271, 88 },       // keypad 8-9, ., enter
+        { 282, 58 }, { 283, 59 }, { 284, 60 }, { 285, 61 },       // F1-F4
+        { 286, 62 }, { 287, 63 }, { 288, 64 }, { 289, 65 },       // F5-F8
+        { 290, 66 }, { 291, 67 }, { 292, 68 }, { 293, 69 },       // F9-F12
+        { 303, 229 }, { 304, 225 },                               // shift
+        { 305, 228 }, { 306, 224 },                               // control
+        { 307, 230 }, { 308, 226 },                               // alt
+    };
+    for ( unsigned i = 0; i < sizeof(legacy)/sizeof(legacy[0]); ++i )
+        if ( legacy[i].sdl12 == keysym )
+            return legacy[i].scancode | SDLK_SCANCODE_MASK;
+    return keysym;
+}
+#endif
+
 // ****************************************
 // a configuration class for keyboard binds
 // ****************************************
@@ -121,6 +162,9 @@ public:
         tString in;
         int keysym;
         s >> keysym;
+#ifdef __EMSCRIPTEN__
+        keysym = su_TranslateLegacyKeysym( keysym );
+#endif
         if (keysym>=0){
             tASSERT(keysym < SDLK_NEWLAST);
             s >> in;
