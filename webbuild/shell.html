@@ -812,21 +812,44 @@
       }).join('\t');
     }
 
-    window.__aaListRoomsForGame = function () {
+    // The engine asks for the room list from inside its own loop and uses the
+    // answer on the next line, so the call cannot wait on a promise. It used to
+    // be a synchronous XHR, which is the same as freezing the tab for as long
+    // as the control plane takes to answer -- and the freeze lands on the
+    // server browser, where the whole point is to be looking at something.
+    //
+    // So the fetch never happens while the engine is waiting. A background
+    // refresh keeps a copy, and the engine is handed whatever is current.
+    var roomListCache = '';
+    var roomListFetching = false;
+
+    function refreshRoomList() {
       var url = controlUrl('/api/lobbies');
-      if (!url) return '';
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false);
-        xhr.send();
-        if (xhr.status < 200 || xhr.status >= 300) return '';
-        var data = JSON.parse(xhr.responseText);
-        if (!data || !Array.isArray(data.lobbies)) return '';
-        return data.lobbies.map(lobbyToGameLine).filter(Boolean).join('\n');
-      } catch (e) {
-        return '';
-      }
+      if (!url || roomListFetching) return;
+      roomListFetching = true;
+      fetch(url, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && Array.isArray(data.lobbies)) {
+            roomListCache = data.lobbies.map(lobbyToGameLine).filter(Boolean).join('\n');
+          }
+        })
+        .catch(function () { /* keep the last good list rather than blanking it */ })
+        .then(function () { roomListFetching = false; });
+    }
+
+    window.__aaListRoomsForGame = function () {
+      // Asking now refreshes for next time. Opening the browser twice is the
+      // normal way to see a room that appeared a moment ago.
+      refreshRoomList();
+      return roomListCache;
     };
+
+    // Warm before anyone opens the browser, then keep it current cheaply. A
+    // room's own heartbeat is 60s, so rooms cannot appear and vanish faster
+    // than this notices.
+    refreshRoomList();
+    setInterval(refreshRoomList, 15000);
 
     // Creating a room from inside the game loop, which is not async and cannot
     // wait on a promise. Synchronous like the listing above and for the same
