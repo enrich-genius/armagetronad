@@ -278,6 +278,34 @@ void sg_StartupPlayerMenu()
 }
 
 #ifndef DEDICATED
+static bool sg_ShouldStartBrowserTutorial()
+{
+#ifdef __EMSCRIPTEN__
+    return emscripten_run_script_int(
+        "(function(){"
+        "  var key = 'wasmageddon.firstRunTutorial';"
+        "  var value = '';"
+        "  try { value = localStorage.getItem(key) || ''; } catch (e) {}"
+        "  if (!value) {"
+        "    var match = document.cookie.match(/(?:^|; )wasmageddon_first_run_tutorial=([^;]*)/);"
+        "    value = match ? decodeURIComponent(match[1]) : '';"
+        "  }"
+        "  if (value === 'start') return 1;"
+        "  if (value === 'skip') return 0;"
+        "  var start = window.confirm('Start a quick local tutorial match?\\n\\nPress Cancel to go to the main menu.');"
+        "  value = start ? 'start' : 'skip';"
+        "  try { localStorage.setItem(key, value); } catch (e) {}"
+        "  try {"
+        "    document.cookie = 'wasmageddon_first_run_tutorial=' + encodeURIComponent(value) +"
+        "      '; Max-Age=31536000; Path=/; SameSite=Lax';"
+        "  } catch (e) {}"
+        "  return start ? 1 : 0;"
+        "})()" ) != 0;
+#else
+    return true;
+#endif
+}
+
 static void welcome(){
     bool textOutBack = sr_textOut;
     sr_textOut = false;
@@ -397,6 +425,12 @@ static void welcome(){
 
     sr_textOut = textOutBack;
     uMenu::Message( tOutput("$welcome_message_heading"), tOutput("$welcome_message"), 300 );
+
+    if ( !sg_ShouldStartBrowserTutorial() )
+    {
+        sr_textOut = textOutBack;
+        return;
+    }
 
     // start a first single player game
     auto speedFactor = sg_currentSettings->speedFactor;
@@ -967,5 +1001,3 @@ static tConfItemFunc st_Dummy11("MASTER_SAVE_INTERVAL", &st_Dummy);
 static tConfItemFunc st_Dummy12("MASTER_IDLE", &st_Dummy);
 static tConfItemFunc st_Dummy13("MASTER_PORT", &st_Dummy);
 #endif
-
-

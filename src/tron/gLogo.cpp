@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "rTexture.h"
 #include "rRender.h"
 #include "rScreen.h"
+#include "rFont.h"
 #include "eCoord.h"
 #include "uMenu.h"
 #include "tSysTime.h"
@@ -54,6 +55,35 @@ static bool sg_Big       = true;
 static eCoord sg_SpinStatus(1,0);    // current spinning position
 static REAL   sg_SizeStatus(1);    // 1 -> big      , 0 -> small
 static REAL   sg_DisplayStatus(-1); // 1 -> displayed, 0->invisible
+
+#ifdef __EMSCRIPTEN__
+static char const * sg_webBrandName = "Wasmageddon";
+
+static REAL sg_UpdateDisplayStatus( REAL dt )
+{
+    if (sg_Displayed && sg_Big)
+    {
+        sg_DisplayStatus += dt;
+        if (sg_DisplayStatus > 1)
+            sg_DisplayStatus = 1;
+    }
+    else
+    {
+        sg_DisplayStatus -= dt;
+        if (sg_DisplayStatus < 0)
+            sg_DisplayStatus = 0;
+    }
+
+    return sg_DisplayStatus;
+}
+
+static void sg_DisplayWebBrand( REAL alpha )
+{
+    rTextField::SetDefaultColor( tColor( .55f, .88f, 1.0f, alpha ) );
+    DisplayTextAutoWidth( 0, .47f, sg_webBrandName, .18f, 0 );
+    rTextField::SetDefaultColor( tColor( 1, 1, 1 ) );
+}
+#endif
 
 void gLogo::SetDisplayed(bool d, bool immediately)
 {
@@ -154,6 +184,14 @@ void gLogo::Display()
     else
     {
 #ifndef KRAWALL
+#ifdef __EMSCRIPTEN__
+        // The browser build is branded independently from the upstream title
+        // texture. Keep the name in one place so a future rename is mechanical.
+        if ( sg_UpdateDisplayStatus( dt ) <= .01 )
+            return;
+
+        sg_DisplayWebBrand( sg_DisplayStatus );
+#else
         sg_LogoMPTitle = tNEW(rFileTexture)(rTextureGroups::TEX_FONT, "textures/title.jpg",0,0,1);
         // sg_LogoMPTitle = tNEW(rFileTexture)(rTextureGroups::TEX_FONT, sg_title,0,0,1);
 
@@ -197,6 +235,7 @@ void gLogo::Display()
         Vertex(1, 1);
 
         RenderEnd();
+#endif
 #endif	  
 
 #ifdef KRAWALL

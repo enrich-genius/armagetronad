@@ -2416,51 +2416,26 @@ public:
 };
 #endif
 
-#ifdef __EMSCRIPTEN__
-// Hosting a match is a platform concern, not a game one: it creates a room in
-// the lobby control plane and hands back a short code to share. The engine has
-// no business speaking HTTP, so the menu item just raises the browser shell's
-// host panel and lets it do the work.
-static void sg_HostBrowserMatch()
-{
-    EM_ASM({
-        if (typeof window.__aaHostMatch === 'function') window.__aaHostMatch();
-    });
-}
-
-static void sg_JoinBrowserMatch()
-{
-    EM_ASM({
-        if (typeof window.__aaJoinMatch === 'function') window.__aaJoinMatch();
-    });
-}
-#endif
-
 void net_game(){
 #ifndef DEDICATED
     uMenu net_menu("$network_menu_text");
 
+#ifndef __EMSCRIPTEN__
     uMenuItemFunction cust
     (&net_menu,"$network_custjoin_text",
      "$network_custjoin_help",&gServerFavorites::CustomConnectMenu);
-
-#ifdef __EMSCRIPTEN__
-    uMenuItemFunction hostRoom
-    (&net_menu,"$network_host_room_text",
-     "$network_host_room_help",&sg_HostBrowserMatch);
-
-    uMenuItemFunction joinRoom
-    (&net_menu,"$network_join_room_text",
-     "$network_join_room_help",&sg_JoinBrowserMatch);
 #endif
 
-    uMenuItemFunction mas
-    (&net_menu,"$masters_menu",
-     "$masters_menu_help",&gServerFavorites::AlternativesMenu);
-
-    uMenuItemFunction fav
-    (&net_menu,"$bookmarks_menu",
-     "$bookmarks_menu_help",&gServerFavorites::FavoritesMenu);
+    // Legacy community server paths are intentionally hidden for the web MVP.
+    // Re-enable these two menu items when browser access to existing UDP
+    // servers becomes a supported follow-up.
+    // uMenuItemFunction mas
+    // (&net_menu,"$masters_menu",
+    //  "$masters_menu_help",&gServerFavorites::AlternativesMenu);
+    //
+    // uMenuItemFunction fav
+    // (&net_menu,"$bookmarks_menu",
+    //  "$bookmarks_menu_help",&gServerFavorites::FavoritesMenu);
 
     uMenuItemFunction bud
     (&net_menu,"$friends_menu",

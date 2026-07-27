@@ -71,19 +71,13 @@ protected:
     //! the finger next.
     bool                 tapSelected;
 
-    //! has a real pointing device been seen in this menu? Mouse motion and the
-    //! wheel set it; a synthesised touch tap does not. Used to decide whether a
-    //! click away from every row should act on the current selection, which is
-    //! what a mouse user expects but would make stray taps dangerous on a phone.
-    bool                 pointerSeen;
-
     //! ESC normally leaves the current menu. The browser root menu has nowhere
     //! useful to go, so it disables this to avoid quitting into a dead tab.
     bool                 escapeExits;
 
     REAL YPos(int num);
     //! index of the row under a normalised screen position, or -1 for none
-    int ItemAt( REAL x, REAL y );
+    virtual int ItemAt( REAL x, REAL y );
 public:
     static bool          wrap;
     

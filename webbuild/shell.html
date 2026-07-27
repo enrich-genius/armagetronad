@@ -791,11 +791,13 @@
     function drawQr(container, text) {
       var qr = qrMatrix(text);
       if (!qr) return;                      // too long to encode; the link still works
-      var quiet = 4, scale = 5;
+      var quiet = 4, scale = 8;
       var px = (qr.size + quiet * 2) * scale;
       var canvas = document.createElement('canvas');
       canvas.width = canvas.height = px;
       canvas.style.width = canvas.style.height = px + 'px';
+      canvas.style.maxWidth = '100%';
+      canvas.style.height = 'auto';
       canvas.style.background = '#fff';
       canvas.style.borderRadius = '6px';
       canvas.setAttribute('role', 'img');
