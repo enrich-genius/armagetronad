@@ -109,6 +109,7 @@ public:
                 Module.websocket = Module.websocket || {};
                 Module.websocket.url = protocol + '//' + host + ':' + port + '/';
                 Module.websocket.subprotocol = 'binary';
+                window.__aaRelayUrl = Module.websocket.url;
             }
         }, static_cast< const char * >( address_ ), port_);
 #endif
@@ -433,7 +434,8 @@ static void sg_ApplyBrowserRelayToCustomServer( gServerFavorite & fav )
     char const * host = emscripten_run_script_string(
         "(function(){"
         "  try {"
-        "    var relay = new URLSearchParams(location.search).get('relay');"
+        "    var relay = (Module.websocket && Module.websocket.url) || window.__aaRelayUrl ||"
+        "      new URLSearchParams(location.search).get('relay');"
         "    if (!relay) return '';"
         "    return new URL(relay, location.href).hostname || '';"
         "  } catch (e) { return ''; }"
@@ -441,7 +443,8 @@ static void sg_ApplyBrowserRelayToCustomServer( gServerFavorite & fav )
     int port = emscripten_run_script_int(
         "(function(){"
         "  try {"
-        "    var relay = new URLSearchParams(location.search).get('relay');"
+        "    var relay = (Module.websocket && Module.websocket.url) || window.__aaRelayUrl ||"
+        "      new URLSearchParams(location.search).get('relay');"
         "    if (!relay) return 0;"
         "    var url = new URL(relay, location.href);"
         "    return parseInt(url.port || (url.protocol === 'wss:' ? '443' : '80'), 10) || 0;"

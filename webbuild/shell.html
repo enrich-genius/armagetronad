@@ -263,15 +263,20 @@
     // One relay endpoint serves one authorised destination for the session; the
     // browser never names a host itself. Server discovery is a platform API
     // concern, not the game's UDP master query, which cannot be routed this way.
-    var relayUrl = new URLSearchParams(location.search).get('relay') || null;
-    if (relayUrl) {
+    var relayUrl = normalizeRelayUrl(new URLSearchParams(location.search).get('relay') || null, true);
+    window.__aaRelayUrl = relayUrl || '';
+
+    function normalizeRelayUrl(relayUrl, allowUpgrade) {
+      if (!relayUrl) return null;
       try {
         var parsedRelayUrl = new URL(relayUrl, location.href);
-        if (location.protocol === 'https:' && parsedRelayUrl.protocol === 'ws:') {
+        if (location.protocol === 'https:' && allowUpgrade && parsedRelayUrl.protocol === 'ws:') {
           parsedRelayUrl.protocol = 'wss:';
-          relayUrl = parsedRelayUrl.toString();
         }
-      } catch (e) {}
+        return parsedRelayUrl.toString();
+      } catch (e) {
+        return null;
+      }
     }
 
     var Module = {
@@ -739,15 +744,28 @@
     // steers every socket the game opens from now on.
     function useRelay(relayUrl) {
       if (!relayUrl) return false;
-      var parsed = new URL(relayUrl, location.href);
+      var parsed;
+      try {
+        parsed = new URL(relayUrl, location.href);
+      } catch (e) {
+        return false;
+      }
       if (location.protocol === 'https:' && parsed.protocol === 'ws:') {
         roomStatusEl.textContent =
           'This page is HTTPS, so an insecure ws:// relay would be blocked. Ask for a wss:// relay.';
         return false;
       }
+      var normalized = normalizeRelayUrl(relayUrl, false);
+      if (!normalized) return false;
+      if (location.protocol === 'https:' && parsed.protocol !== 'wss:') {
+        roomStatusEl.textContent =
+          'This page is HTTPS, so an insecure ws:// relay would be blocked. Ask for a wss:// relay.';
+        return false;
+      }
       Module.websocket = Module.websocket || {};
-      Module.websocket.url = parsed.toString();
+      Module.websocket.url = normalized;
       Module.websocket.subprotocol = 'binary';
+      window.__aaRelayUrl = normalized;
       return true;
     }
 
