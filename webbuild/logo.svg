@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Wasmagetron">
+  <title>Wasmagetron</title>
+  <!--
+    The mark: a "W" traced with only right-angle turns, the light-cycle's trail
+    peeling off to the right from its glowing node.
+
+    Geometry is verbatim from the design source (Wasmgeddon Logo.dc.html in the
+    "Wasmgeddon logo design" project). The design's CSS custom properties are
+    resolved to their token values here, since this file stands on its own:
+      --color-accent      #9184d9   trail
+      --color-accent-300  #d2cefd   node
+      --color-neutral-900 #292b31   ground
+  -->
+  <rect width="160" height="160" rx="32" fill="#292b31"/>
+  <polyline points="18.4,31.6 18.4,91 32.7,91 32.7,128.4 47,128.4 47,98.7 63.5,98.7 63.5,69 80,69 80,98.7 96.5,98.7 96.5,128.4 113,128.4 113,80 127.3,80 127.3,31.6 141.6,31.6 145,32.6"
+    fill="none" stroke="#9184d9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="145" cy="32.6" r="7" fill="#d2cefd"/>
+</svg>
