@@ -96,22 +96,44 @@ extern short se_bugRip;
 static inline void TexVertex( REAL x, REAL y, REAL h)
 {
 #ifdef __EMSCRIPTEN__
-    static const REAL maxTextureCoord = 4096;
-    REAL tx = x;
-    REAL ty = y;
-    if ( tx > maxTextureCoord )
-        tx = maxTextureCoord;
-    if ( tx < -maxTextureCoord )
-        tx = -maxTextureCoord;
-    if ( ty > maxTextureCoord )
-        ty = maxTextureCoord;
-    if ( ty < -maxTextureCoord )
-        ty = -maxTextureCoord;
-    glTexCoord2f(tx, ty);
+    static const REAL textureWrap = 2048;
+    REAL tx = fmod( x, textureWrap );
+    REAL ty = fmod( y, textureWrap );
+    glTexCoord2f( tx, ty );
 #else
     glTexCoord2f(x, y);
 #endif
     glVertex3f  (x, y, h);
+}
+
+static eRectangle BrowserPlaneBounds( eCoord const & pos )
+{
+    eRectangle rect = eWallRim::GetBounds();
+
+#ifdef __EMSCRIPTEN__
+    eCoord low = rect.GetLow();
+    eCoord high = rect.GetHigh();
+
+    REAL spanX = high.x - low.x;
+    REAL spanY = high.y - low.y;
+    REAL pad = se_GridSize() * 96;
+
+    if ( pad < 384 )
+        pad = 384;
+    if ( pad < spanX * .35f )
+        pad = spanX * .35f;
+    if ( pad < spanY * .35f )
+        pad = spanY * .35f;
+
+    rect.Include( eCoord( low.x - pad, low.y - pad ) );
+    rect.Include( eCoord( high.x + pad, high.y + pad ) );
+    rect.Include( eCoord( pos.x - pad, pos.y - pad ) );
+    rect.Include( eCoord( pos.x + pad, pos.y + pad ) );
+#else
+    (void)pos;
+#endif
+
+    return rect;
 }
 
 // renders a finite rectangle
@@ -181,7 +203,7 @@ static void infinity_xy_plane(eCoord const & pos, const eCoord &dir,REAL h=0){
                 }
                 RenderEnd();
         */
-        finite_xy_plane( pos, dir, h, eWallRim::GetBounds() );
+        finite_xy_plane( pos, dir, h, BrowserPlaneBounds( pos ) );
     }
     else
     {
