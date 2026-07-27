@@ -2261,6 +2261,13 @@ first_setup_color_magenta   0xff00ffMagenta0xRESETT
 first_setup_color_cyan      0x00ffffCyan0xRESETT
 first_setup_color_white     0xffffffWhite0xRESETT
 first_setup_color_dark      0x000000Dark0xRESETT
+first_setup_color_rcl_default RCL Default
+first_setup_color_tst_purple TST Purple
+first_setup_color_tst_gold  TST Gold
+first_setup_color_fort_blue Fort Blue
+first_setup_color_overflow_gold Overflow Gold
+first_setup_color_overflow_cyan Overflow Cyan
+first_setup_color_overflow_help Browser overflow color preset using console RGB values above the classic 0-15 range. These follow the RetroCycles League and ArmaNelgTron/NelgTron color tools.
 
 first_setup_leave           Leave Alone
 first_setup_leave_help      Don't change this.

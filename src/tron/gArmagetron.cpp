@@ -151,6 +151,23 @@ enum gConnection
     // gT1
 };
 
+struct gStartupColor
+{
+    int r;
+    int g;
+    int b;
+    bool apply;
+
+    gStartupColor( int red = 0, int green = 0, int blue = 0, bool shouldApply = true )
+            :r(red), g(green), b(blue), apply(shouldApply)
+    {}
+
+    bool operator==( gStartupColor const & other ) const
+    {
+        return r == other.r && g == other.g && b == other.b && apply == other.apply;
+    }
+};
+
 // initial setup menu
 void sg_StartupPlayerMenu()
 {
@@ -197,12 +214,12 @@ void sg_StartupPlayerMenu()
     // k.NewChoice( "$first_setup_keys_both", "$first_setup_keys_both_help", tString("keys_twohand.cfg") );
     k.NewChoice( "$first_setup_keys_x", "$first_setup_keys_x_help", tString("keys_x.cfg") );
 
-    tColor leave(0,0,0,0);
-    tColor color(1,0,0);
-    uMenuItemSelection<tColor> c(&firstSetup,
-                                 "$first_setup_color",
-                                 "$first_setup_color_help",
-                                 color);   
+    gStartupColor leave(0,0,0,false);
+    gStartupColor color(15,0,0);
+    uMenuItemSelection<gStartupColor> c(&firstSetup,
+                                        "$first_setup_color",
+                                        "$first_setup_color_help",
+                                        color);
 
     if ( !st_FirstUse )
     {
@@ -210,16 +227,24 @@ void sg_StartupPlayerMenu()
         c.NewChoice( "$first_setup_leave", "$first_setup_leave_help", leave );
     }
 
-    c.NewChoice( "$first_setup_color_red", "", tColor(1,0,0) );
-    c.NewChoice( "$first_setup_color_blue", "", tColor(0,0,1) );
-    c.NewChoice( "$first_setup_color_green", "", tColor(0,1,0) );
-    c.NewChoice( "$first_setup_color_yellow", "", tColor(1,1,0) );
-    c.NewChoice( "$first_setup_color_orange", "", tColor(1,.5,0) );
-    c.NewChoice( "$first_setup_color_purple", "", tColor(.5,0,1) );
-    c.NewChoice( "$first_setup_color_magenta", "", tColor(1,0,1) );
-    c.NewChoice( "$first_setup_color_cyan", "", tColor(0,1,1) );
-    c.NewChoice( "$first_setup_color_white", "", tColor(1,1,1) );
-    c.NewChoice( "$first_setup_color_dark", "", tColor(0,0,0) );
+    c.NewChoice( "$first_setup_color_red", "", gStartupColor(15,0,0) );
+    c.NewChoice( "$first_setup_color_blue", "", gStartupColor(0,0,15) );
+    c.NewChoice( "$first_setup_color_green", "", gStartupColor(0,15,0) );
+    c.NewChoice( "$first_setup_color_yellow", "", gStartupColor(15,15,0) );
+    c.NewChoice( "$first_setup_color_orange", "", gStartupColor(15,8,0) );
+    c.NewChoice( "$first_setup_color_purple", "", gStartupColor(8,0,15) );
+    c.NewChoice( "$first_setup_color_magenta", "", gStartupColor(15,0,15) );
+    c.NewChoice( "$first_setup_color_cyan", "", gStartupColor(0,15,15) );
+    c.NewChoice( "$first_setup_color_white", "", gStartupColor(15,15,15) );
+    c.NewChoice( "$first_setup_color_dark", "", gStartupColor(0,0,0) );
+#ifdef __EMSCRIPTEN__
+    c.NewChoice( "$first_setup_color_rcl_default", "$first_setup_color_overflow_help", gStartupColor(40,15,8) );
+    c.NewChoice( "$first_setup_color_tst_purple", "$first_setup_color_overflow_help", gStartupColor(10,5,15) );
+    c.NewChoice( "$first_setup_color_tst_gold", "$first_setup_color_overflow_help", gStartupColor(15,15,3) );
+    c.NewChoice( "$first_setup_color_fort_blue", "$first_setup_color_overflow_help", gStartupColor(4,8,15) );
+    c.NewChoice( "$first_setup_color_overflow_gold", "$first_setup_color_overflow_help", gStartupColor(47,40,0) );
+    c.NewChoice( "$first_setup_color_overflow_cyan", "$first_setup_color_overflow_help", gStartupColor(0,40,47) );
+#endif
     
     if ( st_FirstUse )
     {
@@ -258,11 +283,11 @@ void sg_StartupPlayerMenu()
     }
 
     // store color
-    if( ! (color == leave) )
+    if( color.apply )
     {
-        player->rgb[0] = int(color.r_*15);
-        player->rgb[1] = int(color.g_*15);
-        player->rgb[2] = int(color.b_*15);
+        player->rgb[0] = color.r;
+        player->rgb[1] = color.g;
+        player->rgb[2] = color.b;
     }
 
     // load keyboard layout
@@ -281,26 +306,16 @@ void sg_StartupPlayerMenu()
 static bool sg_ShouldStartBrowserTutorial()
 {
 #ifdef __EMSCRIPTEN__
-    return emscripten_run_script_int(
-        "(function(){"
-        "  var key = 'wasmageddon.firstRunTutorial';"
-        "  var value = '';"
-        "  try { value = localStorage.getItem(key) || ''; } catch (e) {}"
-        "  if (!value) {"
-        "    var match = document.cookie.match(/(?:^|; )wasmageddon_first_run_tutorial=([^;]*)/);"
-        "    value = match ? decodeURIComponent(match[1]) : '';"
-        "  }"
-        "  if (value === 'start') return 1;"
-        "  if (value === 'skip') return 0;"
-        "  var start = window.confirm('Start a quick local tutorial match?\\n\\nPress Cancel to go to the main menu.');"
-        "  value = start ? 'start' : 'skip';"
-        "  try { localStorage.setItem(key, value); } catch (e) {}"
-        "  try {"
-        "    document.cookie = 'wasmageddon_first_run_tutorial=' + encodeURIComponent(value) +"
-        "      '; Max-Age=31536000; Path=/; SameSite=Lax';"
-        "  } catch (e) {}"
-        "  return start ? 1 : 0;"
-        "})()" ) != 0;
+    int choice = -1;
+    while ( choice < 0 )
+    {
+        choice = emscripten_run_script_int(
+            "typeof window.__aaFirstRunTutorialChoice === 'function' ? "
+            "window.__aaFirstRunTutorialChoice() : 0" );
+        if ( choice < 0 )
+            emscripten_sleep(16);
+    }
+    return choice != 0;
 #else
     return true;
 #endif

@@ -176,6 +176,18 @@
         <button id="about-close" class="panel-close">Close</button>
       </div>
     </div>
+    <div id="tutorial-prompt" class="overlay" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+      <div class="panel">
+        <h2 id="tutorial-title">First Run</h2>
+        <p class="sub">Start a quick local tutorial match?</p>
+        <p>The tutorial is a slower local round to get a feel for steering and walls.</p>
+        <p class="muted">Your choice is saved and this will not be shown again.</p>
+        <p class="row">
+          <button id="tutorial-start" type="button">Start Tutorial</button>
+          <button id="tutorial-skip" type="button">Main Menu</button>
+        </p>
+      </div>
+    </div>
     <div id="bar">
       <button id="about-btn" aria-haspopup="dialog">About</button>
       <button id="fs">Fullscreen</button>
@@ -430,6 +442,53 @@
         setAbout(false);
       }
     }, true);
+
+    var tutorialPromptEl = document.getElementById('tutorial-prompt');
+    var tutorialChoice = null;
+
+    function storeTutorialChoice(value) {
+      try { localStorage.setItem('wasmageddon.firstRunTutorial', value); } catch (e) {}
+      try {
+        document.cookie = 'wasmageddon_first_run_tutorial=' + encodeURIComponent(value) +
+          '; Max-Age=31536000; Path=/; SameSite=Lax';
+      } catch (e) {}
+    }
+
+    function readTutorialChoice() {
+      var value = '';
+      try { value = localStorage.getItem('wasmageddon.firstRunTutorial') || ''; } catch (e) {}
+      if (!value) {
+        try {
+          var match = document.cookie.match(/(?:^|; )wasmageddon_first_run_tutorial=([^;]*)/);
+          value = match ? decodeURIComponent(match[1]) : '';
+        } catch (e) {}
+      }
+      return value;
+    }
+
+    function setTutorialPrompt(open) {
+      tutorialPromptEl.classList.toggle('open', open);
+      if (!open) canvas.focus();
+    }
+
+    function chooseTutorial(value) {
+      tutorialChoice = value;
+      storeTutorialChoice(value);
+      setTutorialPrompt(false);
+    }
+
+    document.getElementById('tutorial-start').addEventListener('click', function () { chooseTutorial('start'); });
+    document.getElementById('tutorial-skip').addEventListener('click', function () { chooseTutorial('skip'); });
+
+    window.__aaFirstRunTutorialChoice = function () {
+      var saved = readTutorialChoice();
+      if (saved === 'start') return 1;
+      if (saved === 'skip') return 0;
+      if (tutorialChoice === 'start') return 1;
+      if (tutorialChoice === 'skip') return 0;
+      setTutorialPrompt(true);
+      return -1;
+    };
 
     // Writing the config only puts it in the in-memory FS; this is what moves
     // it into IndexedDB so it survives a reload.
