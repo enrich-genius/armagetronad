@@ -2609,6 +2609,17 @@ void sg_DisplayVersionInfo() {
     sg_ClientFullscreenMessage("$version_info_title", versionInfo, 1000);
 }
 
+#ifdef __EMSCRIPTEN__
+static void sg_DisplayHostedMatchInfo()
+{
+    EM_ASM({
+        if (typeof window.__aaShowHostedMatchInfo === 'function') {
+            window.__aaShowHostedMatchInfo();
+        }
+    });
+}
+#endif
+
 void sg_StartupPlayerMenu();
 
 void MainMenu(bool ingame){
@@ -2775,6 +2786,16 @@ void MainMenu(bool ingame){
         if ( eVoter::VotingPossible() )
             voting = tNEW( uMenuItemFunction )( &MainMenu, "$voting_menu_text", "$voting_menu_help", eVoter::VotingMenu );
     }
+
+#ifdef __EMSCRIPTEN__
+    if ( ingame && sn_GetNetState() == nSERVER )
+    {
+        tNEW( uMenuItemFunction )( &MainMenu,
+                                   "$network_hosted_match_info_text",
+                                   "$network_hosted_match_info_help",
+                                   &sg_DisplayHostedMatchInfo );
+    }
+#endif
 
     uMenu misc("$misc_menu_text");
 

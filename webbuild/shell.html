@@ -778,6 +778,22 @@
       return url.toString();
     }
 
+    function renderHostedRoomInfo(code, statusText) {
+      var joinLink = roomJoinLink(code);
+      roomBodyEl.innerHTML =
+        '<p>Match code:</p>' +
+        '<p class="lobby-code" style="font-size:1.8rem;letter-spacing:.25em">' + escapeHtml(code) + '</p>' +
+        '<p id="room-qr"></p>' +
+        '<p class="muted">Share link:<br>' +
+        '<span id="room-share-link">' + escapeHtml(joinLink) + '</span> ' +
+        '<button id="room-copy-link" type="button">Copy</button></p>';
+      drawQr(document.getElementById('room-qr'), joinLink);
+      document.getElementById('room-copy-link').addEventListener('click', function () {
+        copyText(joinLink, roomStatusEl);
+      });
+      roomStatusEl.textContent = statusText || '';
+    }
+
     function copyText(text, statusEl) {
       function done(ok) {
         statusEl.textContent = ok ? 'Copied link.' : 'Could not copy automatically. Select the link and copy it.';
@@ -924,25 +940,31 @@
         hostToken = data.hostToken;
         var code = data.lobby.code;
         hostedRoomCode = code;
-        var joinLink = roomJoinLink(code);
-        roomBodyEl.innerHTML =
-          '<p>Share this code:</p>' +
-          '<p class="lobby-code" style="font-size:1.8rem;letter-spacing:.25em">' + escapeHtml(code) + '</p>' +
-          '<p id="room-qr"></p>' +
-          '<p class="muted">Or share this link:<br>' +
-          '<span id="room-share-link">' + escapeHtml(joinLink) + '</span> ' +
-          '<button id="room-copy-link" type="button">Copy</button></p>';
-        drawQr(document.getElementById('room-qr'), joinLink);
-        document.getElementById('room-copy-link').addEventListener('click', function () {
-          copyText(joinLink, roomStatusEl);
-        });
-        roomStatusEl.textContent = useRelay(data.lobby.relayUrl)
+        var readyText = useRelay(data.lobby.relayUrl)
           ? 'Room ready.'
           : 'Room created, but no usable relay URL was returned.';
+        renderHostedRoomInfo(code, readyText);
         startHeartbeat(code);
       }).catch(function (e) {
         roomStatusEl.textContent = 'Could not create a room: ' + e.message;
       });
+    };
+
+    window.__aaShowHostedMatchInfo = function () {
+      roomTitleEl.textContent = 'About This Match';
+      roomSubEl.textContent = 'Share this code with players joining your match.';
+      roomBodyEl.innerHTML = '';
+      roomStatusEl.textContent = '';
+      setRoomPanel(true);
+
+      if (hostedRoomCode) {
+        renderHostedRoomInfo(hostedRoomCode, 'Room ready.');
+        return;
+      }
+
+      window.__aaHostMatch();
+      roomTitleEl.textContent = 'About This Match';
+      roomSubEl.textContent = 'Share this code with players joining your match.';
     };
 
     window.__aaJoinMatch = function (prefill) {
