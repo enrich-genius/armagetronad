@@ -1081,6 +1081,8 @@ void gServerMenuItem::Enter()
 // any other; it just joins as a spectator with the camera pulled back, which is
 // what turns a laptop on a TV into the shared view of the match while everyone
 // else plays from their phones.
+extern bool sg_hostAsSpectator;
+
 void gServerBrowser::HostBigScreenMatch()
 {
     // Handed over as a global rather than interpolated into the script, so a
@@ -1107,11 +1109,16 @@ void gServerBrowser::HostBigScreenMatch()
         return;
     }
 
-    // Spectating rather than playing is the whole point of this entry, but the
-    // setting belongs to the player and outlives the match, so it is put back
-    // afterwards. Otherwise hosting once would silently make you a spectator
-    // in every game you joined after it.
-    ePlayer * lp = ePlayer::PlayerConfig( 0 );
+    // Spectating is opt in. A host who only watches leaves the room with no
+    // player in it, and the server will not start a match for an empty grid --
+    // it sits in "waiting for real players" until someone else arrives. That is
+    // the right behaviour for a big screen someone is about to join, and a
+    // bafflingly dead one for anybody who just wanted to host a game.
+    //
+    // The settings below belong to the player and outlive the match, so they
+    // are put back afterwards. Otherwise hosting once as a spectator would
+    // silently make you one in every game you joined after it.
+    ePlayer * lp = sg_hostAsSpectator ? ePlayer::PlayerConfig( 0 ) : NULL;
     bool     wasSpectating = lp ? lp->spectate : false;
     eCamMode wasCamera     = lp ? lp->startCamera : CAMERA_SMART;
     bool     wasFreeCam    = lp ? lp->allowCam[ CAMERA_FREE ] : false;

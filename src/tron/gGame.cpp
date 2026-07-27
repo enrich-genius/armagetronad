@@ -628,6 +628,15 @@ static void sg_HideJoinLoading();
 #endif
 
 bool sg_TalkToMaster = true;
+
+#ifdef __EMSCRIPTEN__
+// Hosting on the web puts you in your own room. Whether you play in it or only
+// watch has to be decided before connecting, because it decides whether there
+// is a player to spawn at all -- and playing is the default, since a room whose
+// only occupant is a spectator has nobody to start a match for.
+bool sg_hostAsSpectator = false;
+static tConfItem<bool> sg_hostAsSpectatorConf( "HOST_AS_SPECTATOR", sg_hostAsSpectator );
+#endif
 static tSettingItem<bool> sg_ttm("TALK_TO_MASTER",
                                  sg_TalkToMaster);
 
@@ -2503,6 +2512,11 @@ void sg_HostGameMenu(){
      &GameSettingsMP);
 
 #ifdef __EMSCRIPTEN__
+    uMenuItemToggle spectate
+    (&net_menu,"$network_host_spectate_text",
+     "$network_host_spectate_help",
+     sg_hostAsSpectator);
+
     // Same place in the menu, different meaning. sg_HostGame would make this
     // tab a server nothing can connect to; hosting on the web means creating a
     // room on the shared server and joining it. The name field above still
@@ -2591,12 +2605,13 @@ void net_game(){
      "$network_menu_internet_help",&gServerBrowser::BrowseMaster);
 
 #ifdef __EMSCRIPTEN__
-    // Listed under the browser rather than next to the native host entry: what
-    // it does is create a room and then join it, so it belongs with the other
-    // ways into a game, not with the ways of becoming a server.
-    uMenuItemFunction bigscreen
-    (&net_menu,"$network_menu_bigscreen_text",
-     "$network_menu_bigscreen_help",&gServerBrowser::HostBigScreenMatch);
+    // The same setup screen the server browser's start entry reaches, offered
+    // here too: hosting should not be something you have to load a server list
+    // to find. It opens the screen rather than hosting outright, because the
+    // room's name and whether you spectate are both set there.
+    uMenuItemFunction hostmatch
+    (&net_menu,"$network_menu_hostmatch_text",
+     "$network_menu_hostmatch_help",&sg_HostGameMenu);
 #endif
 
     gNetIdler idler;
