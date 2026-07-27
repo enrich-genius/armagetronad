@@ -99,16 +99,16 @@
       /* Clear of the virtual controls; BACK already holds the top-left corner. */
       #bar.ready #about-btn { top: max(2.75rem, calc(env(safe-area-inset-top) + 2.25rem)); right: max(.5rem, env(safe-area-inset-right)); left: auto; bottom: auto; }
       #touch-controls { position: absolute; inset: 0; z-index: 1; display: block; pointer-events: none; touch-action: none; }
-      /* Lifted clear of the in-game HUD (speed, rubber and brake gauges) that
-         the engine draws along the bottom edge. */
-      .touch-button { position: absolute; width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+      .touch-button { display: none; position: absolute; width: 4.5rem; height: 4.5rem; border: 2px solid rgba(170,220,255,.65); border-radius: 50%; background: rgba(17,34,51,.72); color: #e8fbff; font: 700 1.8rem/1 system-ui, sans-serif; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+      #touch-controls.menu-active .menu-key,
+      #touch-controls.game-active .game-key { display: block; }
       .touch-button:active { background: rgba(60,112,150,.9); }
       #touch-left { left: max(1rem, env(safe-area-inset-left)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); }
       #touch-right { left: max(6.25rem, calc(env(safe-area-inset-left) + 5.25rem)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); }
       #touch-up { left: max(3.625rem, calc(env(safe-area-inset-left) + 2.625rem)); bottom: max(9.75rem, calc(env(safe-area-inset-bottom) + 8.75rem)); }
       #touch-down { left: max(3.625rem, calc(env(safe-area-inset-left) + 2.625rem)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); }
-      #touch-brake { right: max(1rem, env(safe-area-inset-right)); font-size: .75rem; }
-      #touch-select { right: max(6.25rem, calc(env(safe-area-inset-right) + 5.25rem)); font-size: .72rem; }
+      #touch-brake { right: max(1rem, env(safe-area-inset-right)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); font-size: .75rem; }
+      #touch-select { right: max(1rem, env(safe-area-inset-right)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); font-size: .72rem; }
       /* Escape: opens the in-game menu, and backs out of menus. */
       #touch-menu { position: absolute; top: max(.5rem, env(safe-area-inset-top)); left: max(.5rem, env(safe-area-inset-left)); pointer-events: auto; touch-action: none; opacity: .75; font-size: .72rem; padding: .3rem .7rem; }
     }
@@ -123,13 +123,13 @@
   <div id="wrap">
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
     <div id="touch-controls" aria-label="Touch controls">
-      <button id="touch-left" class="touch-button" aria-label="Turn left">←</button>
-      <button id="touch-right" class="touch-button" aria-label="Turn right">→</button>
-      <button id="touch-up" class="touch-button" aria-label="Menu up">↑</button>
-      <button id="touch-down" class="touch-button" aria-label="Menu down">↓</button>
-      <button id="touch-select" class="touch-button" aria-label="Select menu item">SELECT</button>
-      <button id="touch-brake" class="touch-button" aria-label="Brake">BRAKE</button>
-      <button id="touch-menu" aria-label="Menu">BACK</button>
+      <button id="touch-left" class="touch-button menu-key" aria-label="Menu left">←</button>
+      <button id="touch-right" class="touch-button menu-key" aria-label="Menu right">→</button>
+      <button id="touch-up" class="touch-button menu-key" aria-label="Menu up">↑</button>
+      <button id="touch-down" class="touch-button menu-key" aria-label="Menu down">↓</button>
+      <button id="touch-select" class="touch-button menu-key" aria-label="Select menu item">SELECT</button>
+      <button id="touch-brake" class="touch-button game-key" aria-label="Brake">BRAKE</button>
+      <button id="touch-menu" aria-label="Menu">MENU</button>
     </div>
     <input id="mobile-chat-input" autocomplete="off" autocapitalize="sentences" spellcheck="false" aria-label="Chat input">
     <div id="loading">
@@ -204,8 +204,10 @@
     var toolbarEl = document.getElementById('bar');
     var canvas = document.getElementById('canvas');
     var wrap = document.getElementById('wrap');
+    var touchControls = document.getElementById('touch-controls');
     var touchMenuButton = document.getElementById('touch-menu');
     var mobileChatInput = document.getElementById('mobile-chat-input');
+    var aaMenuActive = false;
     // Replaced by build.sh. Keep the generated JS, wasm, and data package on
     // one cache generation: mixing an old loader with a new wasm binary makes
     // WebAssembly instantiation fail with missing imports.
@@ -411,6 +413,9 @@
     setInterval(persist, 10000);
     canvas.addEventListener('click', function () { canvas.focus(); });
     window.__aaSetMenuActive = function (active) {
+      aaMenuActive = !!active;
+      touchControls.classList.toggle('menu-active', active);
+      touchControls.classList.toggle('game-active', !active);
       touchMenuButton.textContent = active ? 'BACK' : 'MENU';
       touchMenuButton.setAttribute('aria-label', active ? 'Back' : 'Menu');
     };
@@ -513,9 +518,9 @@
     // The tap is emitted on release, and only for a pointer that went down on
     // the canvas in the first place, so a finger already resting on the screen
     // when a new menu appears cannot activate whatever lands under it.
-    // Dragging sideways steers, which beats hunting for a button mid-round. The
-    // gesture is measured from a moving origin so a long drag can fire several
-    // turns, and a swipe cancels the tap that would otherwise land on release.
+    // Dragging sideways steers in-game and changes menu options in menus.
+    // Vertical drags move through menu rows. One touch gesture fires at most
+    // one key; repeat turns or menu moves require repeat swipes.
     var SWIPE_PX = 38;
     var tapPointerId = null;
     var swipeOriginX = 0, swipeOriginY = 0, swiped = false;
@@ -542,19 +547,23 @@
 
     canvas.addEventListener('pointermove', function (event) {
       if (event.pointerType !== 'touch' || tapPointerId !== event.pointerId) return;
+      if (swiped) return;
       var dx = event.clientX - swipeOriginX;
       var dy = event.clientY - swipeOriginY;
-      if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return;
+      var horizontal = Math.abs(dx) > Math.abs(dy);
+      if (horizontal && Math.abs(dx) < SWIPE_PX) return;
+      if (!horizontal && (!aaMenuActive || Math.abs(dy) < SWIPE_PX)) return;
       event.preventDefault();
       swiped = true;
-      var right = dx > 0;
-      sendVirtualKey('keydown', right ? 'ArrowRight' : 'ArrowLeft',
-                     right ? 'ArrowRight' : 'ArrowLeft', right ? 39 : 37);
-      sendVirtualKey('keyup', right ? 'ArrowRight' : 'ArrowLeft',
-                     right ? 'ArrowRight' : 'ArrowLeft', right ? 39 : 37);
-      // Re-anchor so continuing the drag can turn again.
-      swipeOriginX = event.clientX;
-      swipeOriginY = event.clientY;
+      var key = horizontal ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft')
+                           : (dy > 0 ? 'ArrowDown' : 'ArrowUp');
+      var code = key;
+      var keyCode = key === 'ArrowRight' ? 39
+                  : key === 'ArrowLeft' ? 37
+                  : key === 'ArrowDown' ? 40
+                  : 38;
+      sendVirtualKey('keydown', key, code, keyCode);
+      sendVirtualKey('keyup', key, code, keyCode);
     });
 
     function endCanvasTap(event) {
