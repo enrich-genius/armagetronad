@@ -149,6 +149,19 @@ static void finite_xy_plane( const eCoord &pos,const eCoord &dir,REAL h, eRectan
     REAL hx = rect.GetHigh().x;
     REAL hy = rect.GetHigh().y;
 
+#ifdef __EMSCRIPTEN__
+    // Do not anchor the browser fallback plane on a point near the camera. When
+    // the view is squeezed against the rim, WebGL can clip that one fan point
+    // and tear open the whole floor/sky background. A corner strip lets the
+    // frustum clip the rectangle itself without hinging all triangles on one
+    // fragile vertex.
+    BeginTriangleStrip();
+    TexVertex(lx, ly, h);
+    TexVertex(lx, hy, h);
+    TexVertex(hx, ly, h);
+    TexVertex(hx, hy, h);
+    RenderEnd();
+#else
     // draw rectangle as triangle fan (good for avoiding artefacts near pos)
     BeginTriangleFan();
     TexVertex( pos.x-dir.x, pos.y-dir.y, h );
@@ -158,6 +171,7 @@ static void finite_xy_plane( const eCoord &pos,const eCoord &dir,REAL h, eRectan
     TexVertex(hx, ly, h);
     TexVertex(lx, ly, h);
     RenderEnd();
+#endif
 }
 
 static void infinity_xy_plane(eCoord const & pos, const eCoord &dir,REAL h=0){
