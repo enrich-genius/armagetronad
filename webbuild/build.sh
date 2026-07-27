@@ -154,6 +154,11 @@ sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g; \
 # re-downloading ~6 MB for a build they already have. The HTML must not be
 # cached, since it is what carries the new version string.
 cat > "$OUT/_headers" <<'HEADERS'
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: upgrade-insecure-requests; block-all-mixed-content
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
 /armagetronad.wasm
   Cache-Control: public, max-age=31536000, immutable
 /armagetronad.data
