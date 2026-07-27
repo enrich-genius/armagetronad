@@ -2502,9 +2502,19 @@ void sg_HostGameMenu(){
      "$game_settings_menu_help",
      &GameSettingsMP);
 
+#ifdef __EMSCRIPTEN__
+    // Same place in the menu, different meaning. sg_HostGame would make this
+    // tab a server nothing can connect to; hosting on the web means creating a
+    // room on the shared server and joining it. The name field above still
+    // matters -- it is what the room is listed as.
+    uMenuItemFunction serv
+    (&net_menu,"$network_host_host_text",
+     "$network_host_host_help",&gServerBrowser::HostBigScreenMatch);
+#else
     uMenuItemFunction serv
     (&net_menu,"$network_host_host_text",
      "$network_host_host_help",&sg_HostGame);
+#endif
 
     net_menu.ReverseItems();
     net_menu.SetSelected(0);
@@ -2667,6 +2677,15 @@ void sg_DisplayVersionInfo() {
 }
 
 #ifdef __EMSCRIPTEN__
+// Whether this tab is the one that created the room it is playing in. Net
+// state no longer answers that: the host joins its own room, so it is a client
+// like everyone else, and only the page still knows which of them opened it.
+static bool sg_HasHostedRoom()
+{
+    return emscripten_run_script_int(
+        "(typeof window.__aaHostedRoomCode === 'string' && window.__aaHostedRoomCode) ? 1 : 0" ) != 0;
+}
+
 static void sg_DisplayHostedMatchInfo()
 {
     EM_ASM({
@@ -2845,7 +2864,7 @@ void MainMenu(bool ingame){
     }
 
 #ifdef __EMSCRIPTEN__
-    if ( ingame && sn_GetNetState() == nSERVER )
+    if ( ingame && sg_HasHostedRoom() )
     {
         tNEW( uMenuItemFunction )( &MainMenu,
                                    "$network_hosted_match_info_text",
