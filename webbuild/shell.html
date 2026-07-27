@@ -686,6 +686,55 @@
       return new URL(path, CONTROL_BASE_URL).toString();
     }
 
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+
+    function roomJoinLink(code) {
+      var explicitBase = new URLSearchParams(location.search).get('share')
+        || window.__AA_SHARE_BASE_URL
+        || window.__AA_PUBLIC_WEB_BASE_URL
+        || '';
+      var url = explicitBase ? new URL(explicitBase, location.href) : new URL(location.href);
+
+      if (explicitBase && (url.pathname === '/' || url.pathname === '')) {
+        url.pathname = location.pathname;
+      }
+
+      url.searchParams.set('room', code);
+      // A shared room link should resolve the current lobby through the control
+      // plane. A direct relay URL can be host-local, expired, or already scoped
+      // to the host's own socket.
+      url.searchParams.delete('relay');
+      url.searchParams.delete('share');
+      url.hash = '';
+      return url.toString();
+    }
+
+    function copyText(text, statusEl) {
+      function done(ok) {
+        statusEl.textContent = ok ? 'Copied link.' : 'Could not copy automatically. Select the link and copy it.';
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        return;
+      }
+
+      var input = document.createElement('input');
+      input.value = text;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.left = '-100vw';
+      document.body.appendChild(input);
+      input.select();
+      try { done(document.execCommand('copy')); }
+      catch (e) { done(false); }
+      document.body.removeChild(input);
+    }
+
     // SOCKFS holds the same object we were given at boot, so updating it here
     // steers every socket the game opens from now on.
     function useRelay(relayUrl) {
@@ -769,13 +818,18 @@
       }).then(function (data) {
         hostToken = data.hostToken;
         var code = data.lobby.code;
-        var joinLink = location.origin + location.pathname + '?room=' + encodeURIComponent(code);
+        var joinLink = roomJoinLink(code);
         roomBodyEl.innerHTML =
           '<p>Share this code:</p>' +
-          '<p class="lobby-code" style="font-size:1.8rem;letter-spacing:.25em">' + code + '</p>' +
+          '<p class="lobby-code" style="font-size:1.8rem;letter-spacing:.25em">' + escapeHtml(code) + '</p>' +
           '<p id="room-qr"></p>' +
-          '<p class="muted">Or share this link:<br>' + joinLink + '</p>';
+          '<p class="muted">Or share this link:<br>' +
+          '<span id="room-share-link">' + escapeHtml(joinLink) + '</span> ' +
+          '<button id="room-copy-link" type="button">Copy</button></p>';
         drawQr(document.getElementById('room-qr'), joinLink);
+        document.getElementById('room-copy-link').addEventListener('click', function () {
+          copyText(joinLink, roomStatusEl);
+        });
         roomStatusEl.textContent = useRelay(data.lobby.relayUrl)
           ? 'Room ready. Close this and start a game.'
           : 'Room created, but no usable relay URL was returned.';
