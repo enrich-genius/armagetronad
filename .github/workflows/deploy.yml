@@ -122,3 +122,19 @@ jobs:
             --notes "Browser client build \`$version\`, from source commit \`${{ github.sha }}\`.
 
           GPL-2.0-or-later. Corresponding source: this repository at \`${{ github.sha }}\`. See \`LICENSES.md\`."
+
+      - name: Trigger production deploy
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.PLATFORM_DEPLOY_TOKEN }}
+        run: |
+          version=$(grep -o 'assetVersion="[0-9]*"' webbuild/dist/armagetronad.html | head -1 | grep -o '[0-9]*')
+          tag="client-$version"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::Missing PLATFORM_DEPLOY_TOKEN. Add a token that can dispatch enrich-genius/armagetronad-platform workflows."
+            exit 1
+          fi
+          gh workflow run deploy.yml \
+            --repo enrich-genius/armagetronad-platform \
+            --ref main \
+            -f client_release="$tag"
