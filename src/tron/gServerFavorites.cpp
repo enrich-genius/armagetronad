@@ -46,6 +46,10 @@ static bool sg_ConnectionStress = false;
 
 #include <sstream>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 enum { NUM_FAVORITES = 10 };
 
 //! favorite server information, just to connect
@@ -91,6 +95,23 @@ public:
     //! connects to the server
     void Connect()
     {
+#ifdef __EMSCRIPTEN__
+        EM_ASM({
+            var host = UTF8ToString($0);
+            var port = $1 | 0;
+            if (host && port > 0) {
+                var existing = new URLSearchParams(location.search).get('relay');
+                var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+                try {
+                    if (existing && location.protocol !== 'https:')
+                        protocol = new URL(existing, location.href).protocol || protocol;
+                } catch (e) {}
+                Module.websocket = Module.websocket || {};
+                Module.websocket.url = protocol + '//' + host + ':' + port + '/';
+                Module.websocket.subprotocol = 'binary';
+            }
+        }, static_cast< const char * >( address_ ), port_);
+#endif
         gServerInfoFavorite fav( address_, port_ );
 
         gLogo::SetDisplayed(false);
@@ -406,6 +427,36 @@ static tConfItemLine sg_serverName_ci("CUSTOM_SERVER_NAME",sg_customServerName);
 static int sg_clientPort = 4534;
 static tConfItem<int> sg_cport("CLIENT_PORT",sg_clientPort);
 
+static void sg_ApplyBrowserRelayToCustomServer( gServerFavorite & fav )
+{
+#ifdef __EMSCRIPTEN__
+    char const * host = emscripten_run_script_string(
+        "(function(){"
+        "  try {"
+        "    var relay = new URLSearchParams(location.search).get('relay');"
+        "    if (!relay) return '';"
+        "    return new URL(relay, location.href).hostname || '';"
+        "  } catch (e) { return ''; }"
+        "})()" );
+    int port = emscripten_run_script_int(
+        "(function(){"
+        "  try {"
+        "    var relay = new URLSearchParams(location.search).get('relay');"
+        "    if (!relay) return 0;"
+        "    var url = new URL(relay, location.href);"
+        "    return parseInt(url.port || (url.protocol === 'wss:' ? '443' : '80'), 10) || 0;"
+        "  } catch (e) { return 0; }"
+        "})()" );
+
+    if ( host && *host )
+        fav.address_ = host;
+    if ( port > 0 && port <= 65535 )
+        fav.port_ = port;
+#else
+    (void)fav;
+#endif
+}
+
 //! transfer old custom server name to favorite
 static void sg_TransferCustomServer()
 {
@@ -506,6 +557,7 @@ void gServerFavorites::CustomConnectMenu( void )
     sg_connectionMenu = & net_menu;
 
     gServerFavorite & fav = sg_favoriteHolder.GetFavorite(-1);
+    sg_ApplyBrowserRelayToCustomServer( fav );
     
     // create menu entries
     sg_languageIDPrefix = "$bookmarks_";
@@ -546,5 +598,3 @@ bool gServerFavorites::IsFavorite( nServerInfoBase const * server )
 {
     return sg_favoriteHolder.IsFavorite( server );
 }
-
-

@@ -1424,26 +1424,40 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
         // synchronously for the whole timeout (300s for the welcome messages),
         // which freezes the tab and stops the very input that would dismiss it.
         tSetBrowserFrameYield( true );
-        while (  !quickexit &&
+        bool done = false;
+        while (  !done && !quickexit &&
                  (to < 0 || tSysTimeFloat() < timeout)){
             //while(  !quickexit && ( !su_GetSDLInput(tEvent) || tEvent.type!=SDL_KEYDOWN) &&
             //        (to < 0 || tSysTimeFloat() < timeout)){
-            if ( su_GetSDLInput(tEvent) && tEvent.type==SDL_KEYDOWN) {
-                switch (tEvent.key.keysym.sym) {
-                case SDLK_UP:
-                    if (offset > 0)
-                        offset -= 1;
-                    continue;
-                case SDLK_DOWN:
-                    offset += 1;
-                    continue;
-                case SDLK_ESCAPE:
-                    ret = false;
-                    break;
-                default:
-                    break;
+            while ( su_GetSDLInput(tEvent) )
+            {
+                if ( tEvent.type == SDL_KEYDOWN )
+                {
+                    switch (tEvent.key.keysym.sym) {
+                    case SDLK_UP:
+                        if (offset > 0)
+                            offset -= 1;
+                        break;
+                    case SDLK_DOWN:
+                        offset += 1;
+                        break;
+                    case SDLK_ESCAPE:
+                        ret = false;
+                        done = true;
+                        break;
+                    case SDLK_SPACE:
+                    case SDLK_KP_ENTER:
+                    case SDLK_RETURN:
+                        done = true;
+                        break;
+                    default:
+                        break;
+                    }
                 }
-                break;
+                else if ( tEvent.type == SDL_MOUSEBUTTONDOWN && tEvent.button.button == 1 )
+                {
+                    done = true;
+                }
             }
             if ( sr_glOut )
             {

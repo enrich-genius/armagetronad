@@ -257,6 +257,15 @@
     // browser never names a host itself. Server discovery is a platform API
     // concern, not the game's UDP master query, which cannot be routed this way.
     var relayUrl = new URLSearchParams(location.search).get('relay') || null;
+    if (relayUrl) {
+      try {
+        var parsedRelayUrl = new URL(relayUrl, location.href);
+        if (location.protocol === 'https:' && parsedRelayUrl.protocol === 'ws:') {
+          parsedRelayUrl.protocol = 'wss:';
+          relayUrl = parsedRelayUrl.toString();
+        }
+      } catch (e) {}
+    }
 
     var Module = {
       canvas: canvas,

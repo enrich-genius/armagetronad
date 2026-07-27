@@ -1080,6 +1080,16 @@ static const bool sg_renderBulkLines = true;
 static const bool sg_renderBulkQuads = true;
 #endif
 
+static inline REAL sg_WebTextureBase( REAL ta, REAL te )
+{
+#ifdef __EMSCRIPTEN__
+    REAL base = ta < te ? ta : te;
+    if ( fabs( base ) > 512 )
+        return floor( base );
+#endif
+    return 0;
+}
+
 void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL te,REAL r,REAL g,REAL b,REAL a, gWallRenderMode mode ){
     REAL hfrac=1;
 
@@ -1134,22 +1144,26 @@ void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL
 #endif
         if ( mode & gWallRenderMode_Quads && sg_renderBulkQuads )
         {
+            REAL textureBase = sg_WebTextureBase( ta, te );
+            REAL texA = ta - textureBase;
+            REAL texE = te - textureBase;
+
             BeginQuads();
 
             glColor4f(r,g,b,1);
-            glTexCoord2f(ta,hfrac);
+            glTexCoord2f(texA,hfrac);
             glVertex3f(p1.x,p1.y,extrarise);
             
             glColor4f(r,g,b,1);
-            glTexCoord2f(ta,0);
+            glTexCoord2f(texA,0);
             glVertex3f(p1.x,p1.y,extrarise + h*hfrac);
             
             glColor4f(r,g,b,1);
-            glTexCoord2f(te,0);
+            glTexCoord2f(texE,0);
             glVertex3f(p2.x,p2.y,extrarise + h*hfrac);
             
             glColor4f(r,g,b,1);
-            glTexCoord2f(te,hfrac);
+            glTexCoord2f(texE,hfrac);
             glVertex3f(p2.x,p2.y,extrarise);
         }
     }
@@ -1251,6 +1265,10 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
 
     if( mode & gWallRenderMode_Quads && sg_renderBeginQuads )
     {
+        REAL textureBase = sg_WebTextureBase( ta, te );
+        REAL texA = ta - textureBase;
+        REAL texE = te - textureBase;
+
         BeginQuadStrip();
 
         for (int i=0;i<=segs;i++){
@@ -1261,13 +1279,13 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
 
             // bottom
             glColor4f(r+cfunc(rat),g+cfunc(rat),b+cfunc(rat),a*afunc(rat));
-            glTexCoord2f(ta+(te-ta)*frag,hfrac);
+            glTexCoord2f(texA+(texE-texA)*frag,hfrac);
             glVertex3f(x,y,0);
 
             // top
             //glTexCoord2f(ta+(te-ta)*frag,hfrac*(1-hfunc(rat)));
             glColor4f(r+cfunc(rat),g+cfunc(rat),b+cfunc(rat),a*afunc(rat));
-            glTexCoord2f(ta+(te-ta)*frag,0);
+            glTexCoord2f(texA+(texE-texA)*frag,0);
             REAL H=h*hfrac*hfunc(rat);
             glVertex3f(x+H*cycle_->skew*sfunc(rat)*cycle_->dir.y,
                        y-H*cycle_->skew*sfunc(rat)*cycle_->dir.x,
@@ -2684,5 +2702,4 @@ static void login_callback(){
 }
 
 static nCallbackLoginLogout sg_LoginLogout(&login_callback);
-
 

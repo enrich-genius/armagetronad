@@ -1403,7 +1403,7 @@ void eCamera::Render(){
         // The legacy renderer used an effectively infinite far plane. WebGL's
         // depth buffer precision collapses with that range, most visibly when
         // the camera gets close to walls and the near plane is adjusted.
-        vp->Perspective(fov,zNear,100000.0f);
+        vp->Perspective(fov,zNear,5000.0f);
 #else
         vp->Perspective(fov,zNear,1E+20);
 #endif
@@ -1462,9 +1462,9 @@ void eCamera::Render(){
             zNear = 0.0001f;
         }
 #ifdef __EMSCRIPTEN__
-        if ( zNear < 0.05f )
+        if ( zNear < 0.1f )
         {
-            zNear = 0.05f;
+            zNear = 0.1f;
         }
 #endif
 
