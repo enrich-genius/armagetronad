@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Wasmagetron — Browser-Native Multiplayer Grid Arena</title>
+  <!-- The mark, inline as a data URI: the page is served under a strict CSP and
+       an icon is not worth another request. Colours are the design's own
+       tokens -- accent #9184d9, node #d2cefd, ground #292b31. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' rx='32' fill='%23292b31'/%3E%3Cpolyline points='18.4,31.6 18.4,91 32.7,91 32.7,128.4 47,128.4 47,98.7 63.5,98.7 63.5,69 80,69 80,98.7 96.5,98.7 96.5,128.4 113,128.4 113,80 127.3,80 127.3,31.6 141.6,31.6 145,32.6' fill='none' stroke='%239184d9' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='145' cy='32.6' r='8.5' fill='%23d2cefd'/%3E%3C/svg%3E">
   <meta name="description" content="Wasmagetron is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.">
   <meta name="keywords" content="Wasmagetron, Armagetron Advanced, grid arena, lightcycle, light cycle game, WebAssembly, WASM, browser game, multiplayer, mobile browser game">
   <meta name="author" content="Enrich Genius">
@@ -46,6 +50,14 @@
        progress bar sitting at 100%. */
     #loading { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; background: #0a0a12; text-align: center; padding: 1rem; transition: opacity .4s ease; }
     #loading.done { opacity: 0; pointer-events: none; }
+    /* The trail glows and breathes, as in the design. overflow:visible so the
+       drop-shadow is not clipped to the viewBox. */
+    #app-mark { width: clamp(64px, 22vw, 104px); height: auto; overflow: visible; animation: markGlow 2.4s ease-in-out infinite; }
+    @keyframes markGlow {
+      0%, 100% { filter: drop-shadow(0 0 3px #9184d9) drop-shadow(0 0 9px #9184d9); }
+      50%      { filter: drop-shadow(0 0 6px #9184d9) drop-shadow(0 0 16px #9184d9); }
+    }
+    @media (prefers-reduced-motion: reduce) { #app-mark { animation: none; } }
     #loading h1 { margin: 0; font-size: clamp(1.1rem, 4.5vw, 1.9rem); font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: #8ddcff; text-shadow: 0 0 18px rgba(74,170,221,.55); }
     #tagline { max-width: min(32rem, 86vw); margin: -.55rem 0 0; font-size: .82rem; color: #d8f7ff; opacity: .82; }
     #port-note { max-width: min(34rem, 88vw); margin: -.35rem 0 0; font-size: .72rem; line-height: 1.4; color: #a9c8d6; opacity: .72; }
@@ -133,6 +145,11 @@
     </div>
     <input id="mobile-chat-input" autocomplete="off" autocapitalize="sentences" spellcheck="false" aria-label="Chat input">
     <div id="loading">
+      <svg id="app-mark" viewBox="0 0 160 160" role="img" aria-label="Wasmagetron">
+        <polyline points="18.4,31.6 18.4,91 32.7,91 32.7,128.4 47,128.4 47,98.7 63.5,98.7 63.5,69 80,69 80,98.7 96.5,98.7 96.5,128.4 113,128.4 113,80 127.3,80 127.3,31.6 141.6,31.6 145,32.6"
+          fill="none" stroke="#9184d9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="145" cy="32.6" r="7" fill="#d2cefd"/>
+      </svg>
       <h1 id="app-title">Wasmagetron</h1>
       <p id="tagline">A browser-native multiplayer grid arena</p>
       <p id="port-note">Independent WebAssembly port built from the open-source Armagetron Advanced project for desktop and mobile browsers.</p>
@@ -812,21 +829,44 @@
       }).join('\t');
     }
 
-    window.__aaListRoomsForGame = function () {
+    // The engine asks for the room list from inside its own loop and uses the
+    // answer on the next line, so the call cannot wait on a promise. It used to
+    // be a synchronous XHR, which is the same as freezing the tab for as long
+    // as the control plane takes to answer -- and the freeze lands on the
+    // server browser, where the whole point is to be looking at something.
+    //
+    // So the fetch never happens while the engine is waiting. A background
+    // refresh keeps a copy, and the engine is handed whatever is current.
+    var roomListCache = '';
+    var roomListFetching = false;
+
+    function refreshRoomList() {
       var url = controlUrl('/api/lobbies');
-      if (!url) return '';
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false);
-        xhr.send();
-        if (xhr.status < 200 || xhr.status >= 300) return '';
-        var data = JSON.parse(xhr.responseText);
-        if (!data || !Array.isArray(data.lobbies)) return '';
-        return data.lobbies.map(lobbyToGameLine).filter(Boolean).join('\n');
-      } catch (e) {
-        return '';
-      }
+      if (!url || roomListFetching) return;
+      roomListFetching = true;
+      fetch(url, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && Array.isArray(data.lobbies)) {
+            roomListCache = data.lobbies.map(lobbyToGameLine).filter(Boolean).join('\n');
+          }
+        })
+        .catch(function () { /* keep the last good list rather than blanking it */ })
+        .then(function () { roomListFetching = false; });
+    }
+
+    window.__aaListRoomsForGame = function () {
+      // Asking now refreshes for next time. Opening the browser twice is the
+      // normal way to see a room that appeared a moment ago.
+      refreshRoomList();
+      return roomListCache;
     };
+
+    // Warm before anyone opens the browser, then keep it current cheaply. A
+    // room's own heartbeat is 60s, so rooms cannot appear and vanish faster
+    // than this notices.
+    refreshRoomList();
+    setInterval(refreshRoomList, 15000);
 
     // Creating a room from inside the game loop, which is not async and cannot
     // wait on a promise. Synchronous like the listing above and for the same

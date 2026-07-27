@@ -437,8 +437,20 @@ void gServerBrowser::BrowseServers()
 {
     //nServerInfo::CalcScoreAll();
     //nServerInfo::Sort();
+#ifndef __EMSCRIPTEN__
     nServerInfo::StartQueryAll( sg_queryType );
     continuePoll = true;
+#else
+    // Every entry here is a lobby room, and a room cannot be polled: the query
+    // is a UDP round trip to the server's own address, and the only address a
+    // room has is a relay endpoint that speaks the game protocol over one
+    // WebSocket. Querying them means opening sockets that never answer, which
+    // is the browser locking up rather than a slow list.
+    //
+    // Nothing is lost. The listing already carries everything a query would
+    // fetch -- name, player count, capacity -- so SetWebLobby marks the info
+    // complete and there is nothing left to ask for.
+#endif
 
     gServerMenu browser("Server Browser");
 
