@@ -103,10 +103,11 @@ src/.cproject
 src/.project
 src/.settings
 
-# WebAssembly port (webbuild/): keep the hand-written shell and the built HTML
-# despite *.html above, and ignore local wrangler deploy state.
-!webbuild/shell.html
+# WebAssembly port (webbuild/): keep the built HTML despite *.html above.
+# The hand-written shell and Pages middleware live in armagetronad-platform.
 !webbuild/dist/armagetronad.html
+webbuild/shell.html
 webbuild/README.md
 webbuild/HANDOFF.md
+functions/
 .wrangler/

@@ -7,6 +7,8 @@
 # Layout is discovered relative to this script; override with env vars:
 #   EMSDK_DIR      path to an emsdk checkout   (default: <workspace>/emsdk)
 #   WASM_DEPS_DIR  prefix with wasm libxml2    (default: <workspace>/wasm-deps)
+#   WEB_SHELL_FILE Emscripten HTML shell owned by the platform repo
+#                  (default: <workspace>/armagetronad-platform/apps/web/armagetronad-shell.html)
 # where <workspace> is the directory two levels above this script.
 set -euo pipefail
 
@@ -16,8 +18,16 @@ WORKSPACE="$(cd "$HERE/../.." && pwd)"
 
 EMSDK_DIR="${EMSDK_DIR:-$WORKSPACE/emsdk}"
 WASM_DEPS_DIR="${WASM_DEPS_DIR:-$WORKSPACE/wasm-deps}"
+PLATFORM_DIR="${ARMAGETRONAD_PLATFORM_DIR:-$WORKSPACE/armagetronad-platform}"
+WEB_SHELL_FILE="${WEB_SHELL_FILE:-$PLATFORM_DIR/apps/web/armagetronad-shell.html}"
 OUT="$HERE/dist"
 mkdir -p "$OUT"
+
+if [[ ! -f "$WEB_SHELL_FILE" ]]; then
+  echo "Missing platform web shell: $WEB_SHELL_FILE" >&2
+  echo "Set WEB_SHELL_FILE or clone enrich-genius/armagetronad-platform next to this repo." >&2
+  exit 1
+fi
 
 # Activate emscripten (respect an already-sourced environment if emcc is present).
 if ! command -v emcc >/dev/null 2>&1; then
@@ -113,7 +123,7 @@ LDFLAGS=(
   "$WASM_DEPS_DIR/lib/libxml2.a"
   --use-preload-plugins
   --preload-file "$HERE/data@/data"
-  --shell-file "$HERE/shell.html"
+  --shell-file "$WEB_SHELL_FILE"
 )
 
 # Compile the C sources to objects first (C standard, no -std=c++17).
