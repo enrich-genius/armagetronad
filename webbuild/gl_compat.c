@@ -22,9 +22,13 @@ void glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
     glEnd();
 }
 
+/* Not via glTexCoord3f: emscripten declares that one and aborts inside it, so
+   this shim used to link cleanly and then kill the tab on the first textured
+   model face. The third coordinate is ignored by fixed function 2D texturing,
+   which is all this target uses. */
 void glTexCoord3fv(const GLfloat *v)
 {
-    glTexCoord3f(v[0], v[1], v[2]);
+    glTexCoord2f(v[0], v[1]);
 }
 
 void glTexCoord2d(GLdouble s, GLdouble t)
