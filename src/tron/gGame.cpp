@@ -620,6 +620,13 @@ static void GameSettingsCurrent(){
 static REAL sg_Timeout = 5.0f;
 static tConfItem<REAL>   sg_ctimeout("GAME_TIMEOUT"		,		sg_Timeout );
 
+#ifdef __EMSCRIPTEN__
+// Defined further down, beside the join flow that first needed them; the
+// end-of-match wait below runs long before that point in the file.
+static void sg_ShowJoinLoading( char const * title, char const * detail );
+static void sg_HideJoinLoading();
+#endif
+
 bool sg_TalkToMaster = true;
 static tSettingItem<bool> sg_ttm("TALK_TO_MASTER",
                                  sg_TalkToMaster);
@@ -1396,8 +1403,29 @@ void update_settings( bool const * goon )
             bool restarted = false;
 
             REAL timeout = tSysTimeFloat() + 3.0f;
+#ifdef __EMSCRIPTEN__
+            bool announcedWait = false;
+#endif
             while ( sg_NumHumans() <= 0 && sg_NumUsers() > 0 && ( !goon || *goon ) && uMenu::quickexit == uMenu::QuickExit_Off )
             {
+#ifdef __EMSCRIPTEN__
+                // This loop waits for a human to return, and every pass blocks
+                // on a 100ms network select. Nothing in it draws a frame or
+                // reads input, so on the web it reads as the tab locking up for
+                // the whole wait -- menu selection included.
+                //
+                // Two parts to fixing that: an HTML overlay, which lives
+                // outside the GL canvas and so keeps painting while the game
+                // loop is between frames, and a yield each pass to give the
+                // browser its event loop back. tDelay() already suspends this
+                // way from game code, so this is an established boundary.
+                if ( !announcedWait )
+                {
+                    sg_ShowJoinLoading( "Match Restarting", "Waiting for players..." );
+                    announcedWait = true;
+                }
+                emscripten_sleep( 16 );
+#endif
                 if ( !restarted && bool(sg_currentGame) )
                 {
                     sg_currentGame->StartNewMatch();
@@ -1430,6 +1458,10 @@ void update_settings( bool const * goon )
                 // handle console input
                 sr_Read_stdin();
             }
+#ifdef __EMSCRIPTEN__
+            if ( announcedWait )
+                sg_HideJoinLoading();
+#endif
         }
 
         if ( sg_NumUsers() <= 0 && bool( sg_currentGame ) )
