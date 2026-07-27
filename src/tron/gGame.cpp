@@ -2260,40 +2260,6 @@ void ConnectToServer(nServerInfoBase *server)
     sg_StopQuickExit();
 }
 
-#ifdef __EMSCRIPTEN__
-extern "C" EMSCRIPTEN_KEEPALIVE void aaConnectCurrentRelay()
-{
-    char const * host = emscripten_run_script_string(
-        "(function(){"
-        "  try {"
-        "    var relay = (Module.websocket && Module.websocket.url) || window.__aaRelayUrl ||"
-        "      new URLSearchParams(location.search).get('relay');"
-        "    if (!relay) return '';"
-        "    return new URL(relay, location.href).hostname || '';"
-        "  } catch (e) { return ''; }"
-        "})()" );
-    int port = emscripten_run_script_int(
-        "(function(){"
-        "  try {"
-        "    var relay = (Module.websocket && Module.websocket.url) || window.__aaRelayUrl ||"
-        "      new URLSearchParams(location.search).get('relay');"
-        "    if (!relay) return 0;"
-        "    var url = new URL(relay, location.href);"
-        "    return parseInt(url.port || (url.protocol === 'wss:' ? '443' : '80'), 10) || 0;"
-        "  } catch (e) { return 0; }"
-        "})()" );
-
-    if ( host && *host && port > 0 )
-    {
-        nServerInfoRedirect relay( tString( host ), port );
-        ConnectToServer( &relay );
-    }
-
-    if ( host )
-        free( const_cast< char * >( host ) );
-}
-#endif
-
 static tConfItem<int> mor("MAX_OUT_RATE",sn_maxRateOut);
 static tConfItem<int> mir("MAX_IN_RATE",sn_maxRateIn);
 
