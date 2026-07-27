@@ -2064,10 +2064,43 @@ static void sg_StopQuickExit()
     }
 }
 
+#ifdef __EMSCRIPTEN__
+static void sg_ShowJoinLoading( char const * title, char const * detail )
+{
+    EM_ASM({
+        if (typeof window.__aaShowJoinLoading === 'function') {
+            window.__aaShowJoinLoading(UTF8ToString($0), UTF8ToString($1));
+        }
+    }, title, detail);
+}
+
+static void sg_UpdateJoinLoading( char const * detail )
+{
+    EM_ASM({
+        if (typeof window.__aaUpdateJoinLoading === 'function') {
+            window.__aaUpdateJoinLoading(UTF8ToString($0));
+        }
+    }, detail);
+}
+
+static void sg_HideJoinLoading()
+{
+    EM_ASM({
+        if (typeof window.__aaHideJoinLoading === 'function') {
+            window.__aaHideJoinLoading();
+        }
+    });
+}
+#endif
+
 // return code: false if there was an error or abort
 bool ConnectToServerCore(nServerInfoBase *server)
 {
     tASSERT( server );
+
+#ifdef __EMSCRIPTEN__
+    sg_ShowJoinLoading( "Joining Match", "Opening the relay connection..." );
+#endif
 
     ePlayerNetID::ClearAll();
 
@@ -2113,16 +2146,25 @@ bool ConnectToServerCore(nServerInfoBase *server)
     switch (error)
     {
     case nABORT:
+#ifdef __EMSCRIPTEN__
+        sg_HideJoinLoading();
+#endif
         return false;
         break;
     case nOK:
         break;
     case nTIMEOUT:
+#ifdef __EMSCRIPTEN__
+        sg_HideJoinLoading();
+#endif
         sg_NetworkError("$network_message_timeout_title", "$network_message_timeout_inter", 20);
         return false;
         break;
 
     case nDENIED:
+#ifdef __EMSCRIPTEN__
+        sg_HideJoinLoading();
+#endif
         sg_NetworkError("$network_message_denied_title", sn_DenyReason.Len() > 2 ? "$network_message_denied_inter2" : "$network_message_denied_inter", 20);
         return false;
         break;
@@ -2134,6 +2176,9 @@ bool ConnectToServerCore(nServerInfoBase *server)
     if (sn_GetNetState()==nCLIENT){
         REAL endTime=tSysTimeFloat()+30;
         con << tOutput("$network_connecting_gamestate");
+#ifdef __EMSCRIPTEN__
+        sg_UpdateJoinLoading( "Waiting for the server to send the game state..." );
+#endif
         // Nothing in this loop reaches the browser on its own: tAdvanceFrame()
         // with no delay only suspends inside a menu, and sn_Delay() just does a
         // socket select. So it spun for the full 30 seconds, and since the
@@ -2162,12 +2207,25 @@ bool ConnectToServerCore(nServerInfoBase *server)
             sr_con.fullscreen=false;
 
             con << tOutput("$network_syncing_gamestate");
+#ifdef __EMSCRIPTEN__
+            sg_UpdateJoinLoading( "Syncing game state..." );
+            sg_HideJoinLoading();
+#endif
             sg_EnterGame( nCLIENT );
         }
         else{
             //con << "Timeout. Try again!\n";
+#ifdef __EMSCRIPTEN__
+            sg_HideJoinLoading();
+#endif
             sg_NetworkError("$network_message_lateto_title", "$network_message_lateto_inter", 20);
         }
+    }
+    else
+    {
+#ifdef __EMSCRIPTEN__
+        sg_HideJoinLoading();
+#endif
     }
 
     bool ret = true;
@@ -2379,9 +2437,11 @@ void sg_HostGameMenu(){
 
     sg_HostMenu = &net_menu;
 
+#ifndef __EMSCRIPTEN__
     uMenuItemInt port(&net_menu, "$network_host_port_text",
                       "$network_host_port_help"
                       ,reinterpret_cast<int &>(sn_serverPort), gServerBrowser::lowPort, gServerBrowser::highPort);
+#endif
 
     uMenuItemString serverName
     (&net_menu,"$network_host_name_text",
