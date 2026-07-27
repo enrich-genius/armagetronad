@@ -1512,6 +1512,15 @@ network_menu_lan_help		Connect to a server on your local network or start a serv
 network_menu_internet_text	Online Multiplayer
 network_menu_internet_help	Connect to an internet server or start one.
 
+network_menu_hostmatch_text	Host Match
+network_menu_hostmatch_help	Create a room others can join by code, from a phone or another browser.
+
+network_host_spectate_text	Watch Only (Big Screen)
+network_host_spectate_help	Watch the whole arena instead of playing, for a TV others join from their phones. The match waits until someone else joins.
+
+network_host_failed_title	Could not host
+network_host_failed_inter	The lobby service did not hand back a room. Check that this page can reach the control plane, then try again.
+
 network_opts_text		Network Setup
 network_opts_help		Configures your network preferences.
 
