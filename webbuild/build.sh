@@ -7,7 +7,7 @@
 # Layout is discovered relative to this script; override with env vars:
 #   EMSDK_DIR      path to an emsdk checkout   (default: <workspace>/emsdk)
 #   WASM_DEPS_DIR  prefix with wasm libxml2    (default: <workspace>/wasm-deps)
-#   WEB_SHELL_FILE Emscripten HTML shell owned by the platform repo
+#   WEB_SHELL_FILE Emscripten HTML shell (defaults to webbuild/shell.html)
 #                  (default: <workspace>/armagetronad-platform/apps/web/armagetronad-shell.html)
 # where <workspace> is the directory two levels above this script.
 set -euo pipefail
@@ -19,13 +19,17 @@ WORKSPACE="$(cd "$HERE/../.." && pwd)"
 EMSDK_DIR="${EMSDK_DIR:-$WORKSPACE/emsdk}"
 WASM_DEPS_DIR="${WASM_DEPS_DIR:-$WORKSPACE/wasm-deps}"
 PLATFORM_DIR="${ARMAGETRONAD_PLATFORM_DIR:-$WORKSPACE/armagetronad-platform}"
-WEB_SHELL_FILE="${WEB_SHELL_FILE:-$PLATFORM_DIR/apps/web/armagetronad-shell.html}"
+# The shell is part of the GPL client, not the platform: emcc compiles it into
+# the distributed binary via --shell-file, and it carries the game's own canvas,
+# input and touch controls. It lives here so the source a player is offered is
+# the source their client was actually built from.
+WEB_SHELL_FILE="${WEB_SHELL_FILE:-$HERE/shell.html}"
 OUT="$HERE/dist"
 mkdir -p "$OUT"
 
 if [[ ! -f "$WEB_SHELL_FILE" ]]; then
-  echo "Missing platform web shell: $WEB_SHELL_FILE" >&2
-  echo "Set WEB_SHELL_FILE or clone enrich-genius/armagetronad-platform next to this repo." >&2
+  echo "Missing web shell: $WEB_SHELL_FILE" >&2
+  echo "Expected webbuild/shell.html, or set WEB_SHELL_FILE to override." >&2
   exit 1
 fi
 
