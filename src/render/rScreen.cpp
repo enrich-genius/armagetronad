@@ -1007,8 +1007,14 @@ void sr_LoadDefaultConfig(){
         //sr_lineAntialias=rFEAT_OFF;
     }
     else if(strstr(gl_vendor,"NVIDIA")){
+#ifndef __EMSCRIPTEN__
         // infinity , display lists and glFlush swapping work for NVIDIA
         sr_infinityPlane=true;
+#else
+        // WebGL/GLES does not handle this legacy projected-vertex path reliably;
+        // use finite sky/floor/rim geometry instead.
+        sr_infinityPlane=false;
+#endif
 #ifndef __EMSCRIPTEN__
         // WebGL has no display lists; keep them off regardless of the reported
         // GL vendor (which may be NVIDIA on the host machine).

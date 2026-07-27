@@ -77,6 +77,10 @@ protected:
     //! what a mouse user expects but would make stray taps dangerous on a phone.
     bool                 pointerSeen;
 
+    //! ESC normally leaves the current menu. The browser root menu has nowhere
+    //! useful to go, so it disables this to avoid quitting into a dead tab.
+    bool                 escapeExits;
+
     REAL YPos(int num);
     //! index of the row under a normalised screen position, or -1 for none
     int ItemAt( REAL x, REAL y );
@@ -112,6 +116,7 @@ public:
     uMenuItem* Item(int i)  { return items[i]; }
     void AddItem(uMenuItem* item);
     void RemoveItem(uMenuItem* item);
+    void SetEscapeExits(bool value) { escapeExits = value; }
 
 #ifdef SLOPPYLOCALE
     uMenu(const char *t,bool exit_item=true);
@@ -628,4 +633,3 @@ inline void uMenu::AddItem(uMenuItem* item)     { items.Add(item, item->idnum); 
 inline void uMenu::RemoveItem(uMenuItem* item)  { items.Remove(item, item->idnum); }
 
 #endif
-

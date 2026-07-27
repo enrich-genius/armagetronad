@@ -78,7 +78,7 @@ bool uMenu::exitToMain=false;
 
 #ifdef SLOPPYLOCALE
 uMenu::uMenu(const char *t="",bool exit_item)
-        :exitFlag(0),spaceBelow(.4),title(t){
+        :exitFlag(0),spaceBelow(.4),escapeExits(true),title(t){
     if (exit_item) new uMenuItemExit(this);
     center=0;
     menuTop=.7;
@@ -91,7 +91,7 @@ uMenu::uMenu(const char *t="",bool exit_item)
 #endif
 
 uMenu::uMenu(const tOutput &t,bool exit_item)
-        :exitFlag(0),spaceBelow(.4),title(t){
+        :exitFlag(0),spaceBelow(.4),escapeExits(true),title(t){
     if (exit_item) new uMenuItemExit(this);
     center=0;
     menuTop=.7;
@@ -440,22 +440,11 @@ void uMenu::HandleEvent( SDL_Event event )
 
             case(SDLK_ESCAPE):
 #ifdef __EMSCRIPTEN__
+                if ( !escapeExits )
                 {
-                    bool hasExitItem = false;
-                    for ( int i = items.Len()-1; i >= 0; --i )
-                    {
-                        if ( dynamic_cast< uMenuItemExit * >( items[i] ) )
-                        {
-                            hasExitItem = true;
-                            break;
-                        }
-                    }
-                    if ( !hasExitItem )
-                    {
-                        s_globalRepeat = false;
-                        lastkey=tSysTimeFloat();
-                        break;
-                    }
+                    s_globalRepeat = false;
+                    lastkey=tSysTimeFloat();
+                    break;
                 }
 #endif
                 s_globalRepeat = false;
@@ -549,17 +538,28 @@ void uMenu::HandleEvent( SDL_Event event )
         break;
         case SDL_MOUSEBUTTONDOWN:
         {
-            // SDL 1 reports the wheel as button presses; move the highlight
-            // with it, exactly as the cursor keys would.
+            // SDL 1 reports the wheel as button presses. On pointer devices,
+            // wheel over a row should adjust that row's option, like left/right,
+            // not move the menu highlight up/down.
             if ( event.button.button == SDL_BUTTON_WHEELUP ||
                  event.button.button == SDL_BUTTON_WHEELDOWN )
             {
                 pointerSeen = true;
-                SDL_Event key = event;
-                key.type = SDL_KEYDOWN;
-                key.key.keysym.sym =
-                    ( event.button.button == SDL_BUTTON_WHEELUP ) ? SDLK_UP : SDLK_DOWN;
-                HandleEvent( key );
+                if ( menuentries > 0 && sr_screenHeight > 0 && sr_screenWidth > 0 )
+                {
+                    REAL x = 2 * REAL( event.button.x ) / REAL( sr_screenWidth ) - 1;
+                    REAL y = 1 - 2 * REAL( event.button.y ) / REAL( sr_screenHeight );
+                    int hit = ItemAt( x, y );
+                    if ( hit >= 0 )
+                    {
+                        selected = hit;
+                        tapSelected = true;
+                    }
+                }
+                items[selected]->LeftRight(
+                    ( event.button.button == SDL_BUTTON_WHEELUP ) ? -1 : 1
+                );
+                lastkey = tSysTimeFloat();
                 break;
             }
 

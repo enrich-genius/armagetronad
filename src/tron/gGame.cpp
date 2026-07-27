@@ -2605,6 +2605,11 @@ void MainMenu(bool ingame){
 
     uMenu MainMenu(title,false);
 
+#ifdef __EMSCRIPTEN__
+    if ( !ingame )
+        MainMenu.SetEscapeExits( false );
+#endif
+
     if (ingame)
         sg_IngameMenu = &MainMenu;
 

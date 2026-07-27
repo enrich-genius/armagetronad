@@ -127,6 +127,15 @@ static void infinity_xy_plane(eCoord const & pos, const eCoord &dir,REAL h=0){
     bool use_rim=false;
     REAL zero=0;
 
+#ifdef __EMSCRIPTEN__
+    // WebGL/GLES clips projected "infinite" vertices less forgivingly than the
+    // legacy desktop GL path. Near walls, those coordinates can explode and make
+    // floor/sky textures repeat or flash odd colors.
+    bool browserFinitePlane = true;
+#else
+    bool browserFinitePlane = false;
+#endif
+
     if (sr_highRim)
         use_rim=true;
 
@@ -134,7 +143,7 @@ static void infinity_xy_plane(eCoord const & pos, const eCoord &dir,REAL h=0){
         use_rim=false;
 
     // always use the rim if infinity rendering is turned off
-    use_rim |= !sr_infinityPlane;
+    use_rim |= !sr_infinityPlane || browserFinitePlane;
 
     if (use_rim){
         /*
@@ -731,4 +740,3 @@ void eViewerCrossesEdge::Render(){
 */
 
 #endif
-
