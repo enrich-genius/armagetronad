@@ -628,6 +628,15 @@ static void sg_HideJoinLoading();
 #endif
 
 bool sg_TalkToMaster = true;
+
+#ifdef __EMSCRIPTEN__
+// Hosting on the web puts you in your own room. Whether you play in it or only
+// watch has to be decided before connecting, because it decides whether there
+// is a player to spawn at all -- and playing is the default, since a room whose
+// only occupant is a spectator has nobody to start a match for.
+bool sg_hostAsSpectator = false;
+static tConfItem<bool> sg_hostAsSpectatorConf( "HOST_AS_SPECTATOR", sg_hostAsSpectator );
+#endif
 static tSettingItem<bool> sg_ttm("TALK_TO_MASTER",
                                  sg_TalkToMaster);
 
@@ -1738,11 +1747,18 @@ void init_game_camera(eGrid *grid){
 
             // se_PauseGameTimer(true);
 
-            ePlayer::PlayerConfig(i)->cam=new gCamera(grid,
-                                          ePlayer::PlayerViewport(i),
-                                          p,
-                                          ePlayer::PlayerConfig(i),
-                                          CAMERA_SMART);
+            // A spectator has no cycle, so the smart camera has nothing of its
+            // own to sit behind and the round opens looking at whichever player
+            // it picked up. Their chosen start camera is honoured instead --
+            // which is what lets a big screen host open on the whole arena.
+            ePlayer * config = ePlayer::PlayerConfig(i);
+            eCamMode startMode = config->spectate ? config->startCamera : CAMERA_SMART;
+
+            config->cam=new gCamera(grid,
+                                    ePlayer::PlayerViewport(i),
+                                    p,
+                                    config,
+                                    startMode);
 
             lastTime_gameloop=lastTimeTimestep=0;
         }
@@ -2495,9 +2511,24 @@ void sg_HostGameMenu(){
      "$game_settings_menu_help",
      &GameSettingsMP);
 
+#ifdef __EMSCRIPTEN__
+    uMenuItemToggle spectate
+    (&net_menu,"$network_host_spectate_text",
+     "$network_host_spectate_help",
+     sg_hostAsSpectator);
+
+    // Same place in the menu, different meaning. sg_HostGame would make this
+    // tab a server nothing can connect to; hosting on the web means creating a
+    // room on the shared server and joining it. The name field above still
+    // matters -- it is what the room is listed as.
+    uMenuItemFunction serv
+    (&net_menu,"$network_host_host_text",
+     "$network_host_host_help",&gServerBrowser::HostBigScreenMatch);
+#else
     uMenuItemFunction serv
     (&net_menu,"$network_host_host_text",
      "$network_host_host_help",&sg_HostGame);
+#endif
 
     net_menu.ReverseItems();
     net_menu.SetSelected(0);
@@ -2572,6 +2603,16 @@ void net_game(){
     uMenuItemFunction inter
     (&net_menu,"$network_menu_internet_text",
      "$network_menu_internet_help",&gServerBrowser::BrowseMaster);
+
+#ifdef __EMSCRIPTEN__
+    // The same setup screen the server browser's start entry reaches, offered
+    // here too: hosting should not be something you have to load a server list
+    // to find. It opens the screen rather than hosting outright, because the
+    // room's name and whether you spectate are both set there.
+    uMenuItemFunction hostmatch
+    (&net_menu,"$network_menu_hostmatch_text",
+     "$network_menu_hostmatch_help",&sg_HostGameMenu);
+#endif
 
     gNetIdler idler;
     // rSysDep::StartNetSyncThread( &idler );
@@ -2651,6 +2692,15 @@ void sg_DisplayVersionInfo() {
 }
 
 #ifdef __EMSCRIPTEN__
+// Whether this tab is the one that created the room it is playing in. Net
+// state no longer answers that: the host joins its own room, so it is a client
+// like everyone else, and only the page still knows which of them opened it.
+static bool sg_HasHostedRoom()
+{
+    return emscripten_run_script_int(
+        "(typeof window.__aaHostedRoomCode === 'string' && window.__aaHostedRoomCode) ? 1 : 0" ) != 0;
+}
+
 static void sg_DisplayHostedMatchInfo()
 {
     EM_ASM({
@@ -2829,7 +2879,7 @@ void MainMenu(bool ingame){
     }
 
 #ifdef __EMSCRIPTEN__
-    if ( ingame && sn_GetNetState() == nSERVER )
+    if ( ingame && sg_HasHostedRoom() )
     {
         tNEW( uMenuItemFunction )( &MainMenu,
                                    "$network_hosted_match_info_text",

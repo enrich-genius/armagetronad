@@ -98,11 +98,25 @@ public:
     }
 
     virtual void TexCoord(REAL u, REAL v, REAL w){
+#ifdef __EMSCRIPTEN__
+        // emscripten's GL emulation has no glTexCoord3f -- it links, and then
+        // aborts the moment it is called. Everything here samples a 2D texture,
+        // where fixed function ignores the third coordinate anyway, so dropping
+        // it renders the same thing instead of killing the tab.
+        (void)w;
+        glTexCoord2f(u,v);
+#else
         glTexCoord3f(u,v,w);
+#endif
     }
 
     virtual void TexCoord(REAL u, REAL v, REAL w, REAL t){
+#ifdef __EMSCRIPTEN__
+        (void)w; (void)t;
+        glTexCoord2f(u,v);
+#else
         glTexCoord4f(u,v,w,t);
+#endif
     };
 
     virtual void TexVertex(REAL x, REAL y, REAL z,

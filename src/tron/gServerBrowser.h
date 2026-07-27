@@ -39,6 +39,10 @@ public:
     static void BrowseSpecialMaster( nServerInfoBase * master, char const * prefix );    // browse servers from a special master server
     static void BrowseLAN();            // browse servers in the LAN
     static void BrowseServers();        // browse the servers currently in the list
+#ifdef __EMSCRIPTEN__
+    // create a room through the lobby control plane and join it as a spectator
+    static void HostBigScreenMatch();
+#endif
     static void ConfigurationMenu();    // browser configuration menu
 
     static nServerInfoBase * CurrentMaster(); // the currently active master server
