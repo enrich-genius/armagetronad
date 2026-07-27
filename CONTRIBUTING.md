@@ -28,6 +28,30 @@ better sent upstream than carried here.
 Exact toolchain versions are in [`LICENSES.md`](LICENSES.md). `webbuild/dist/` is
 committed, so a change to the client is not complete until it is rebuilt.
 
+## How changes ship
+
+```text
+branch  ->  pull request  ->  preview deploy  ->  merge  ->  release
+```
+
+- A pull request deploys a preview to `pr-<number>.armagetronad-wasm.pages.dev`
+  and comments the link. Previews sit behind Cloudflare Access; sign in with a
+  Cloudflare account to view one.
+- Merging to `release_0.2.9-wasm` publishes a client release tarball.
+- Production is deployed from the platform repository, which consumes that
+  release. This repository never deploys production, so a deploy always names an
+  immutable artifact rather than whatever a branch pointed at.
+
+`webbuild/dist` is committed, and CI publishes exactly what a reviewer saw
+rather than rebuilding. So **rebuild before you push**: CI fails the branch when
+tracked sources are newer than the committed build, rather than shipping a
+client that silently lacks your change.
+
+```bash
+./webbuild/build.sh
+git add webbuild/dist && git commit
+```
+
 ## Before you open a pull request
 
 - Say which browsers and devices you actually tested on. "Should work" is not a

@@ -103,10 +103,11 @@ src/.cproject
 src/.project
 src/.settings
 
-# WebAssembly port (webbuild/): keep the built HTML despite *.html above.
-# The hand-written shell and Pages middleware live in armagetronad-platform.
+# WebAssembly port (webbuild/): keep the built HTML despite *.html above, and
+# the hand-written shell, which emcc compiles into the distributed binary and
+# which the build cannot be reproduced without.
 !webbuild/dist/armagetronad.html
-webbuild/shell.html
+!webbuild/shell.html
 webbuild/README.md
 webbuild/HANDOFF.md
 functions/

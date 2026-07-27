@@ -27,6 +27,7 @@ Everything below is GPL-covered and is published in this repository:
 | Browser compatibility shims compiled into the client | `webbuild/*_compat.c`, `webbuild/glu_shim.c`, `webbuild/prefix.c` |
 | Page shell, mobile touch controls, input glue | `webbuild/shell.html` |
 | Packaged game data | `webbuild/data/` |
+| Release packaging | `webbuild/package-dist.sh` |
 | Built artifacts served to users | `webbuild/dist/` |
 
 `webbuild/shell.html` is listed deliberately. It is not a neutral wrapper: it is
@@ -55,6 +56,14 @@ cd armagetronad
 ./webbuild/build-libxml2.sh     # once, cross-compiles the one external dependency
 ./webbuild/build.sh             # emits webbuild/dist/
 ```
+
+Everything the build needs is in this repository, including `webbuild/shell.html`.
+A clone with no other checkout present reproduces the client; nothing is pulled
+from the private platform repository.
+
+Each published build also carries a `BUILD-INFO.json` naming the source commit
+it came from, so a client someone received can be matched to the source that
+produced it.
 
 Toolchain the published artifacts were produced with:
 
