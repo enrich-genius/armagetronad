@@ -1,0 +1,9 @@
+{
+  "product": "armagetronad-wasm-client",
+  "assetVersion": "20260727032049",
+  "sourceRepository": "https://github.com/enrich-genius/armagetronad",
+  "sourceCommit": "050130d877332cc782363c72db1309cf0fe3692f",
+  "license": "GPL-2.0-or-later",
+  "sourceOffer": "https://github.com/enrich-genius/armagetronad/blob/050130d877332cc782363c72db1309cf0fe3692f/LICENSES.md",
+  "builtAt": "2026-07-27T03:28:36Z"
+}

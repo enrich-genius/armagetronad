@@ -111,3 +111,4 @@ webbuild/README.md
 webbuild/HANDOFF.md
 functions/
 .wrangler/
+build-artifacts/
