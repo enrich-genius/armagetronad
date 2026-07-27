@@ -15,6 +15,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$(cd "$HERE/../src" && pwd)"
 WORKSPACE="$(cd "$HERE/../.." && pwd)"
+PUBLIC_BUILD_ROOT="/__wasi__/wasmageddon"
 
 EMSDK_DIR="${EMSDK_DIR:-$WORKSPACE/emsdk}"
 WASM_DEPS_DIR="${WASM_DEPS_DIR:-$WORKSPACE/wasm-deps}"
@@ -90,6 +91,8 @@ INCLUDES=(
 CXXFLAGS=(
   -std=c++17
   -O2
+  -ffile-prefix-map="$WORKSPACE=$PUBLIC_BUILD_ROOT"
+  -ffile-prefix-map="$HOME=/__wasi__/home"
   -DHAVE_CONFIG_H
   # The engine throws across the simulation: eSensor::PassEdge unwinds out of a
   # wall walk with a throw, and main()/sg_EnterGame() guard themselves with
@@ -136,6 +139,8 @@ for c in "${CSOURCES[@]}"; do
   obj="$OUT/$(basename "${c%.*}").o"
   echo "Compiling (C) $(basename "$c")..."
   emcc -std=gnu11 -O2 -DHAVE_CONFIG_H "${INCLUDES[@]}" \
+    -ffile-prefix-map="$WORKSPACE=$PUBLIC_BUILD_ROOT" \
+    -ffile-prefix-map="$HOME=/__wasi__/home" \
     -sUSE_SDL=1 -sUSE_SDL_MIXER=1 -c "$c" -o "$obj"
   COBJS+=("$obj")
 done
@@ -144,6 +149,8 @@ echo "Compiling ${#SOURCES[@]} C++ translation units and linking..."
 emcc "${CXXFLAGS[@]}" "${INCLUDES[@]}" "${LDFLAGS[@]}" \
   "${SOURCES[@]}" "${COBJS[@]}" \
   -o "$OUT/armagetronad.html"
+
+rm -f "${COBJS[@]}"
 
 # Emscripten names its outputs predictably. Add a per-build query string to
 # the loader and every locateFile asset so Cloudflare/browser caches can never
@@ -162,6 +169,21 @@ sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g; \
         s/__DATA_BYTES__/${DATA_BYTES}/g; \
         s/src=armagetronad\\.js/src=armagetronad.js?v=${BUILD_VERSION}/g" \
   "$OUT/armagetronad.html"
+
+# Emscripten's preload packager bakes the local output path into bookkeeping
+# strings such as addRunDependency("datafile_/home/.../armagetronad.data").
+# They are not needed in the browser and should never ship in public artifacts.
+PACKAGE_ABS="$OUT/armagetronad.data"
+PACKAGE_ABS="$PACKAGE_ABS" perl -0pi -e 's/\Q$ENV{PACKAGE_ABS}\E/armagetronad.data/g' \
+  "$OUT/armagetronad.js"
+
+# Prebuilt static dependencies can still carry build-time absolute paths in
+# wasm data segments. Use a same-length replacement so the binary remains valid.
+if [[ ${#WORKSPACE} -eq ${#PUBLIC_BUILD_ROOT} ]]; then
+  WORKSPACE="$WORKSPACE" PUBLIC_BUILD_ROOT="$PUBLIC_BUILD_ROOT" perl -0pi -e \
+    's/\Q$ENV{WORKSPACE}\E/$ENV{PUBLIC_BUILD_ROOT}/g' \
+    "$OUT/armagetronad.wasm"
+fi
 
 # Cloudflare Pages headers. Every asset URL carries ?v=<build>, so a given URL
 # is immutable and can be cached hard -- that is what stops a returning player
@@ -184,6 +206,33 @@ cat > "$OUT/_headers" <<'HEADERS'
 /
   Cache-Control: public, max-age=0, must-revalidate
 HEADERS
+
+SHIPPED_FILES=(
+  "$OUT/armagetronad.html"
+  "$OUT/armagetronad.js"
+  "$OUT/armagetronad.wasm"
+  "$OUT/armagetronad.data"
+  "$OUT/_headers"
+  "$OUT/_redirects"
+  "$OUT/BUILD-INFO.json"
+)
+
+PII_PATTERNS=(
+  "$HOME"
+  "$WORKSPACE"
+  "$(basename "$WORKSPACE")"
+  "/home/${USER:-}"
+  "/Users/${USER:-}"
+)
+
+for pattern in "${PII_PATTERNS[@]}"; do
+  [[ -n "$pattern" ]] || continue
+  if rg -a -F --quiet "$pattern" "${SHIPPED_FILES[@]}"; then
+    echo "Build output contains local build identity/path: $pattern" >&2
+    rg -a -F --files-with-matches "$pattern" "${SHIPPED_FILES[@]}" >&2 || true
+    exit 1
+  fi
+done
 
 echo "Build complete: $OUT/armagetronad.html"
 echo "  wasm ${WASM_BYTES} bytes, data ${DATA_BYTES} bytes, version ${BUILD_VERSION}"

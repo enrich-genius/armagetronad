@@ -53,6 +53,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <emscripten.h>
 #endif
 
+#include <cstdlib>
+#include <sstream>
+#include <string>
+
 int gServerBrowser::lowPort  = 4534;
 
 int gServerBrowser::highPort = 4540;
@@ -74,12 +78,48 @@ class gServerInfo: public nServerInfo
 public:
     gServerMenuItem *menuItem;
 	bool show; //for server browser hiding
+    bool webLobby;
+    tString webLobbyCode;
+    tString webLobbyRelayUrl;
 
-    gServerInfo():menuItem(NULL), show(true)
+    gServerInfo():menuItem(NULL), show(true), webLobby(false)
     {
     }
 
     virtual ~gServerInfo();
+
+    void SetWebLobby( tString const & code, tString const & roomName, int playerCount, int maxPlayerCount,
+                      tString const & relayUrl, tString const & relayHost, unsigned int relayPort )
+    {
+        webLobby = true;
+        webLobbyCode = code;
+        webLobbyRelayUrl = relayUrl;
+
+        name = roomName;
+        if ( name.Len() <= 1 )
+        {
+            name = "Wasmgeddon Room ";
+            name << code;
+        }
+
+        users = playerCount;
+        maxUsers_ = maxPlayerCount;
+        release_ = "Wasmgeddon";
+        userNames_ = userNamesOneLine_ = "Room code ";
+        userNames_ << code;
+        userNamesOneLine_ << code;
+        options_ = "Hosted through the Wasmgeddon relay.";
+        url_ = relayUrl;
+        ping = .001;
+        score = 10000 + users;
+        advancedInfoSet = true;
+        advancedInfoSetEver = true;
+        timesNotAnswered = 0;
+        stillOnMasterServer = true;
+
+        SetConnectionName( relayHost );
+        SetPort( relayPort );
+    }
 
     // during browsing, the whole server list consists of gServerInfos
     static gServerInfo * GetFirstServer()
@@ -105,6 +145,66 @@ nServerInfo* CreateGServer()
 
     return ret;
 }
+
+#ifdef __EMSCRIPTEN__
+static int sg_ToInt( std::string const & value, int fallback )
+{
+    std::istringstream stream( value );
+    int parsed = fallback;
+    stream >> parsed;
+    return parsed;
+}
+
+static void sg_AddWebLobbyServers()
+{
+    char * rooms = emscripten_run_script_string(
+        "(function(){"
+        "  return typeof window.__aaListRoomsForGame === 'function' ? window.__aaListRoomsForGame() : '';"
+        "})()" );
+    if ( !rooms || !*rooms )
+    {
+        if ( rooms )
+            free( rooms );
+        return;
+    }
+
+    std::istringstream lines( rooms );
+    std::string line;
+    while ( std::getline( lines, line ) )
+    {
+        if ( line.empty() )
+            continue;
+
+        std::string fields[7];
+        std::istringstream cols( line );
+        for ( int i = 0; i < 7 && std::getline( cols, fields[i], '\t' ); ++i )
+            ;
+
+        if ( fields[0].empty() || fields[4].empty() || fields[5].empty() )
+            continue;
+
+        unsigned int relayPort = static_cast< unsigned int >( sg_ToInt( fields[6], 0 ) );
+        if ( relayPort == 0 )
+            continue;
+
+        gServerInfo * server = dynamic_cast< gServerInfo * >( CreateGServer() );
+        if ( !server )
+            continue;
+
+        server->SetWebLobby(
+            tString( fields[0].c_str() ),
+            tString( fields[1].c_str() ),
+            sg_ToInt( fields[2], 0 ),
+            sg_ToInt( fields[3], MAXCLIENTS ),
+            tString( fields[4].c_str() ),
+            tString( fields[5].c_str() ),
+            relayPort
+        );
+    }
+
+    free( rooms );
+}
+#endif
 
 
 class gServerMenu: public uMenu
@@ -234,6 +334,10 @@ void gServerBrowser::BrowseSpecialMaster( nServerInfoBase * master, char const *
     nServerInfo::DeleteAll();
     nServerInfo::GetFromMaster( master, prefix );
     nServerInfo::Save();
+#ifdef __EMSCRIPTEN__
+    if ( !prefix || !*prefix )
+        sg_AddWebLobbyServers();
+#endif
 
     //  gLogo::SetBig(true);
     //  gLogo::SetSpinning(false);
@@ -912,6 +1016,19 @@ void gServerMenuItem::Enter()
     //  gLogo::SetSpinning(true);
     // gLogo::SetDisplayed(false);
 
+#ifdef __EMSCRIPTEN__
+    if ( server && server->webLobby )
+    {
+        EM_ASM({
+            var relay = UTF8ToString($0);
+            Module.websocket = Module.websocket || {};
+            Module.websocket.url = relay;
+            Module.websocket.subprotocol = 'binary';
+            window.__aaRelayUrl = relay;
+        }, static_cast< const char * >( server->webLobbyRelayUrl ) );
+    }
+#endif
+
     if (server)
         ConnectToServer(server);
 }
@@ -1000,6 +1117,11 @@ void gServerStartMenuItem::Enter()
     });
 #endif
     sg_HostGameMenu();
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaCloseHostedRoom === 'function') window.__aaCloseHostedRoom();
+    });
+#endif
 }
 
 

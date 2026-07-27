@@ -103,10 +103,10 @@
       #touch-controls.menu-active .menu-key,
       #touch-controls.game-active .game-key { display: block; }
       .touch-button:active { background: rgba(60,112,150,.9); }
-      #touch-brake { right: max(1rem, env(safe-area-inset-right)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); font-size: .75rem; }
+      #touch-brake { right: max(1rem, env(safe-area-inset-right)); bottom: max(5.75rem, calc(env(safe-area-inset-bottom) + 5.75rem)); font-size: .75rem; }
       /* Camera mode, above BRAKE. The desktop game switches view with c or v;
          there is no way to reach that on a touch screen without a button. */
-      #touch-cam { right: max(1rem, env(safe-area-inset-right)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); font-size: .72rem; }
+      #touch-cam { right: max(1rem, env(safe-area-inset-right)); bottom: max(10.75rem, calc(env(safe-area-inset-bottom) + 10.75rem)); font-size: .72rem; }
       /* Escape: opens the in-game menu, and backs out of menus. */
       #touch-menu { position: absolute; top: max(.5rem, env(safe-area-inset-top)); left: max(.5rem, env(safe-area-inset-left)); pointer-events: auto; touch-action: none; opacity: .75; font-size: .72rem; padding: .3rem .7rem; }
     }
@@ -414,7 +414,10 @@
     }
     // 'pagehide' rather than the deprecated unload events; it also fires when
     // the tab is merely backgrounded, so settings survive being swapped out.
-    window.addEventListener('pagehide', persist);
+    window.addEventListener('pagehide', function () {
+      persist();
+      if (typeof window.__aaCloseHostedRoom === 'function') window.__aaCloseHostedRoom();
+    });
     // A phone can lose the tab without ever firing pagehide, so also flush on
     // the way to the background and on a slow timer.
     document.addEventListener('visibilitychange', function () {
@@ -676,6 +679,7 @@
     var roomSubEl = document.getElementById('room-sub');
     var roomBodyEl = document.getElementById('room-body');
     var roomStatusEl = document.getElementById('lobby-status');
+    var hostedRoomCode = null;
     var hostToken = null;
     var heartbeatTimer = null;
 
@@ -690,6 +694,38 @@
       if (!CONTROL_BASE_URL) return null;
       return new URL(path, CONTROL_BASE_URL).toString();
     }
+
+    window.__aaListRoomsForGame = function () {
+      var url = controlUrl('/api/lobbies');
+      if (!url) return '';
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false);
+        xhr.send();
+        if (xhr.status < 200 || xhr.status >= 300) return '';
+        var data = JSON.parse(xhr.responseText);
+        if (!data || !Array.isArray(data.lobbies)) return '';
+        return data.lobbies.map(function (lobby) {
+          var relay = normalizeRelayUrl(lobby.relayUrl, false);
+          if (!lobby || !lobby.code || !relay) return '';
+          var relayUrl = new URL(relay, location.href);
+          var name = lobby.name || ('Room ' + lobby.code);
+          return [
+            lobby.code,
+            name,
+            lobby.players || 0,
+            lobby.maxPlayers || 8,
+            relay,
+            relayUrl.hostname,
+            parseInt(relayUrl.port || (relayUrl.protocol === 'wss:' ? '443' : '80'), 10) || 0
+          ].map(function (value) {
+            return String(value).replace(/[\t\r\n]/g, ' ');
+          }).join('\t');
+        }).filter(Boolean).join('\n');
+      } catch (e) {
+        return '';
+      }
+    };
 
     function escapeHtml(text) {
       return String(text).replace(/[&<>"']/g, function (ch) {
@@ -784,6 +820,31 @@
       }, 60000);
     }
 
+    window.__aaCloseHostedRoom = function () {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+
+      var code = hostedRoomCode;
+      var token = hostToken;
+      hostedRoomCode = null;
+      hostToken = null;
+
+      if (!code || !token) return;
+      var url = controlUrl('/api/lobbies/' + encodeURIComponent(code));
+      if (!url) return;
+
+      try {
+        fetch(url, {
+          method: 'DELETE',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ hostToken: token }),
+          keepalive: true,
+        }).catch(function () {});
+      } catch (e) {}
+    };
+
 
     // A phone camera is the fastest way to hand someone a lobby. Drawn locally
     // rather than through an image service: the page is served under a strict
@@ -813,6 +874,34 @@
       container.appendChild(canvas);
     }
 
+    function connectCurrentRelay() {
+      roomStatusEl.textContent = 'Connecting\u2026';
+      setRoomPanel(false);
+      canvas.focus();
+
+      try {
+        if (Module && typeof Module._aaConnectCurrentRelay === 'function') {
+          Module._aaConnectCurrentRelay();
+          return;
+        }
+      } catch (e) {
+        setRoomPanel(true);
+        roomStatusEl.textContent = 'Could not connect: ' + e.message;
+        return;
+      }
+
+      setRoomPanel(true);
+      roomStatusEl.textContent = 'The game is still starting. Try Connect again in a moment.';
+    }
+
+    function addConnectButton(label) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label || 'Connect';
+      button.addEventListener('click', connectCurrentRelay);
+      roomBodyEl.appendChild(button);
+    }
+
     window.__aaHostMatch = function () {
       roomTitleEl.textContent = 'Host Match';
       roomSubEl.textContent = 'Create a room and share the code.';
@@ -838,6 +927,7 @@
       }).then(function (data) {
         hostToken = data.hostToken;
         var code = data.lobby.code;
+        hostedRoomCode = code;
         var joinLink = roomJoinLink(code);
         roomBodyEl.innerHTML =
           '<p>Share this code:</p>' +
@@ -851,8 +941,9 @@
           copyText(joinLink, roomStatusEl);
         });
         roomStatusEl.textContent = useRelay(data.lobby.relayUrl)
-          ? 'Room ready. Close this and start a game.'
+          ? 'Room ready.'
           : 'Room created, but no usable relay URL was returned.';
+        if (window.__aaRelayUrl) addConnectButton('Start Game');
         startHeartbeat(code);
       }).catch(function (e) {
         roomStatusEl.textContent = 'Could not create a room: ' + e.message;
@@ -892,15 +983,18 @@
             if (!r.ok) throw new Error('control plane returned ' + r.status);
             return r.json();
           }).then(function (data) {
-            roomStatusEl.textContent = useRelay(data.lobby.relayUrl)
-              ? 'Joined ' + code + '. Close this and connect.'
+            var usable = useRelay(data.lobby.relayUrl);
+            roomStatusEl.textContent = usable
+              ? 'Joined ' + code + '.'
               : 'Room found, but no usable relay URL was returned.';
+            if (usable) addConnectButton('Connect');
           }).catch(function (e) {
             roomStatusEl.textContent = 'Could not join: ' + e.message;
           });
       }
       document.getElementById('room-join').addEventListener('click', attempt);
       input.addEventListener('keydown', function (e) { if (e.key === 'Enter') attempt(); });
+      if (prefill) attempt();
     };
 
     // A shared link lands straight on the join panel with the code filled in.
