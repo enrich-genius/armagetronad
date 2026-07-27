@@ -4,7 +4,7 @@ This repository is the game client: the Armagetron Advanced engine, its
 WebAssembly port, and the browser shell. It is GPL-2.0-or-later — see
 [`LICENSES.md`](LICENSES.md) for what that covers and how to reproduce a build.
 
-Wasmageddon is an independent port. Armagetron Advanced is the work of its own
+Wasmagetron is an independent port. Armagetron Advanced is the work of its own
 authors and contributors, and changes that are not browser-specific are usually
 better sent upstream than carried here.
 
