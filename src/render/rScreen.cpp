@@ -1130,6 +1130,15 @@ void sr_DepthOffset(bool offset){
 #ifdef __EMSCRIPTEN__
     // WebGL/GLES depth precision gets unstable with this renderer's very large
     // far plane when polygon offset is also active near walls.
+    //
+    // Keep the state explicit. Some render paths call glPolygonOffset()
+    // directly before or after sr_DepthOffset(); returning here can leave a
+    // previous offset enabled and makes walls/floor/cycle shadows fight the
+    // depth buffer when the camera gets close to geometry.
+    glPolygonOffset(0,0);
+    glDisable(GL_POLYGON_OFFSET_POINT);
+    glDisable(GL_POLYGON_OFFSET_LINE);
+    glDisable(GL_POLYGON_OFFSET_FILL);
     if (offset)
         return;
 #endif

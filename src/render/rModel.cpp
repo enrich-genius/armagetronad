@@ -292,7 +292,9 @@ void rModel::Render(){
         if ( !modelTexFacesCoherent )
         {
             rDisplayListFiller filler( displayList_, false );
+#ifndef __EMSCRIPTEN__
             glEnable(GL_CULL_FACE);
+#endif
 
             // sigh, we need to do it the complicated way
             glBegin( GL_TRIANGLES );
@@ -327,7 +329,9 @@ void rModel::Render(){
             glEnableClientState(GL_VERTEX_ARRAY);
 
             rDisplayListFiller filler( displayList_, false );
+#ifndef __EMSCRIPTEN__
             glEnable(GL_CULL_FACE);
+#endif
 
             glDrawElements(GL_TRIANGLES,
                            modelFaces.Len()*3,
@@ -379,7 +383,6 @@ void rModel::ClearCache()
 
     sr_modelCache.clear();
 }
-
 
 
 

@@ -874,34 +874,6 @@
       container.appendChild(canvas);
     }
 
-    function connectCurrentRelay() {
-      roomStatusEl.textContent = 'Connecting\u2026';
-      setRoomPanel(false);
-      canvas.focus();
-
-      try {
-        if (Module && typeof Module._aaConnectCurrentRelay === 'function') {
-          Module._aaConnectCurrentRelay();
-          return;
-        }
-      } catch (e) {
-        setRoomPanel(true);
-        roomStatusEl.textContent = 'Could not connect: ' + e.message;
-        return;
-      }
-
-      setRoomPanel(true);
-      roomStatusEl.textContent = 'The game is still starting. Try Connect again in a moment.';
-    }
-
-    function addConnectButton(label) {
-      var button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = label || 'Connect';
-      button.addEventListener('click', connectCurrentRelay);
-      roomBodyEl.appendChild(button);
-    }
-
     window.__aaHostMatch = function () {
       roomTitleEl.textContent = 'Host Match';
       roomSubEl.textContent = 'Create a room and share the code.';
@@ -943,7 +915,6 @@
         roomStatusEl.textContent = useRelay(data.lobby.relayUrl)
           ? 'Room ready.'
           : 'Room created, but no usable relay URL was returned.';
-        if (window.__aaRelayUrl) addConnectButton('Start Game');
         startHeartbeat(code);
       }).catch(function (e) {
         roomStatusEl.textContent = 'Could not create a room: ' + e.message;
@@ -985,16 +956,14 @@
           }).then(function (data) {
             var usable = useRelay(data.lobby.relayUrl);
             roomStatusEl.textContent = usable
-              ? 'Joined ' + code + '.'
+              ? 'Room found. Close this, open Online Multiplayer, select this room, then join.'
               : 'Room found, but no usable relay URL was returned.';
-            if (usable) addConnectButton('Connect');
           }).catch(function (e) {
             roomStatusEl.textContent = 'Could not join: ' + e.message;
           });
       }
       document.getElementById('room-join').addEventListener('click', attempt);
       input.addEventListener('keydown', function (e) { if (e.key === 'Enter') attempt(); });
-      if (prefill) attempt();
     };
 
     // A shared link lands straight on the join panel with the code filled in.

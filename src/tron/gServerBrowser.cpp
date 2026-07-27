@@ -1111,17 +1111,7 @@ void gServerStartMenuItem::Enter()
     //  gLogo::SetSpinning(true);
     // gLogo::SetDisplayed(false);
 
-#ifdef __EMSCRIPTEN__
-    EM_ASM({
-        if (typeof window.__aaHostMatch === 'function') window.__aaHostMatch();
-    });
-#endif
     sg_HostGameMenu();
-#ifdef __EMSCRIPTEN__
-    EM_ASM({
-        if (typeof window.__aaCloseHostedRoom === 'function') window.__aaCloseHostedRoom();
-    });
-#endif
 }
 
 
