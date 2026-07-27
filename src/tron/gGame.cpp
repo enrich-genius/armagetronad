@@ -2519,6 +2519,9 @@ static void PlayerLogIn()
 
 void sg_DisplayVersionInfo() {
     tOutput versionInfo;
+#ifdef __EMSCRIPTEN__
+    versionInfo << "$version_info_misc_stuff";
+#else
     versionInfo << "$version_info_version" << "\n";
     st_PrintPathInfo(versionInfo);
     versionInfo << "$version_info_misc_stuff";
@@ -2530,6 +2533,7 @@ void sg_DisplayVersionInfo() {
     versionInfo << gl_renderer;
     versionInfo << "$version_info_gl_version";
     versionInfo << gl_version;
+#endif
 
     sg_ClientFullscreenMessage("$version_info_title", versionInfo, 1000);
 }
