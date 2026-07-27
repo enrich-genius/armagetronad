@@ -2454,13 +2454,16 @@ void net_game(){
      "$network_join_room_help",&sg_JoinBrowserMatch);
 #endif
 
-    uMenuItemFunction mas
-    (&net_menu,"$masters_menu",
-     "$masters_menu_help",&gServerFavorites::AlternativesMenu);
-
-    uMenuItemFunction fav
-    (&net_menu,"$bookmarks_menu",
-     "$bookmarks_menu_help",&gServerFavorites::FavoritesMenu);
+    // Legacy community server paths are intentionally hidden for the web MVP.
+    // Re-enable these two menu items when browser access to existing UDP
+    // servers becomes a supported follow-up.
+    // uMenuItemFunction mas
+    // (&net_menu,"$masters_menu",
+    //  "$masters_menu_help",&gServerFavorites::AlternativesMenu);
+    //
+    // uMenuItemFunction fav
+    // (&net_menu,"$bookmarks_menu",
+    //  "$bookmarks_menu_help",&gServerFavorites::FavoritesMenu);
 
     uMenuItemFunction bud
     (&net_menu,"$friends_menu",
