@@ -103,15 +103,10 @@
       #touch-controls.menu-active .menu-key,
       #touch-controls.game-active .game-key { display: block; }
       .touch-button:active { background: rgba(60,112,150,.9); }
-      #touch-left { left: max(1rem, env(safe-area-inset-left)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); }
-      #touch-right { left: max(6.25rem, calc(env(safe-area-inset-left) + 5.25rem)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); }
-      #touch-up { left: max(3.625rem, calc(env(safe-area-inset-left) + 2.625rem)); bottom: max(9.75rem, calc(env(safe-area-inset-bottom) + 8.75rem)); }
-      #touch-down { left: max(3.625rem, calc(env(safe-area-inset-left) + 2.625rem)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); }
       #touch-brake { right: max(1rem, env(safe-area-inset-right)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); font-size: .75rem; }
       /* Camera mode, above BRAKE. The desktop game switches view with c or v;
          there is no way to reach that on a touch screen without a button. */
       #touch-cam { right: max(1rem, env(safe-area-inset-right)); bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem)); font-size: .72rem; }
-      #touch-select { right: max(1rem, env(safe-area-inset-right)); bottom: max(.75rem, calc(env(safe-area-inset-bottom) + .75rem)); font-size: .72rem; }
       /* Escape: opens the in-game menu, and backs out of menus. */
       #touch-menu { position: absolute; top: max(.5rem, env(safe-area-inset-top)); left: max(.5rem, env(safe-area-inset-left)); pointer-events: auto; touch-action: none; opacity: .75; font-size: .72rem; padding: .3rem .7rem; }
     }
@@ -126,11 +121,8 @@
   <div id="wrap">
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
     <div id="touch-controls" aria-label="Touch controls">
-      <button id="touch-left" class="touch-button menu-key" aria-label="Menu left">←</button>
-      <button id="touch-right" class="touch-button menu-key" aria-label="Menu right">→</button>
-      <button id="touch-up" class="touch-button menu-key" aria-label="Menu up">↑</button>
-      <button id="touch-down" class="touch-button menu-key" aria-label="Menu down">↓</button>
-      <button id="touch-select" class="touch-button menu-key" aria-label="Select menu item">SELECT</button>
+      <!-- Menus are driven by tapping a row and by vertical swipes, so a D-pad
+           and a Select button were redundant chrome over the game. -->
       <button id="touch-brake" class="touch-button game-key" aria-label="Brake">BRAKE</button>
       <button id="touch-cam" class="touch-button game-key" aria-label="Change camera view">CAM</button>
       <button id="touch-menu" aria-label="Menu">MENU</button>
@@ -433,8 +425,14 @@
     // then point the transport at the relay URL the control plane returns.
     //
     // Base URL is overridable so a local worker can be used during development.
+    // Where the lobby control plane lives. An explicit ?control= wins, then a
+    // value the host page injected, then this default -- so a self-hosted or
+    // local control plane needs no rebuild, and the stock client still works
+    // with nothing configured. A public endpoint is not a secret, and the
+    // client stays reproducible and useful without it.
     var CONTROL_BASE_URL = new URLSearchParams(location.search).get('control')
-      || window.__AA_CONTROL_BASE_URL || '';
+      || window.__AA_CONTROL_BASE_URL
+      || 'https://control.armagetronad.enrichgenius.com';
 
     var roomEl = document.getElementById('room');
     var roomTitleEl = document.getElementById('room-title');
@@ -654,12 +652,7 @@
       button.addEventListener('pointercancel', release);
       button.addEventListener('lostpointercapture', release);
     }
-    bindTouchKey('touch-left', 'ArrowLeft', 'ArrowLeft', 37);
-    bindTouchKey('touch-right', 'ArrowRight', 'ArrowRight', 39);
-    bindTouchKey('touch-up', 'ArrowUp', 'ArrowUp', 38);
-    bindTouchKey('touch-down', 'ArrowDown', 'ArrowDown', 40);
     bindTouchKey('touch-brake', 'ArrowDown', 'ArrowDown', 40);
-    bindTouchKey('touch-select', 'Enter', 'Enter', 13, true);
     bindTouchKey('touch-menu', 'Escape', 'Escape', 27, true);
     // SWITCH_VIEW is bound to c and v in the shipped key configs. DOM keyCode 67
     // is 'C'; emscripten lowercases A-Z, so it arrives as SDL 99 = 'c'.
