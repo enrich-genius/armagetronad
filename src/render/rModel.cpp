@@ -228,13 +228,21 @@ void rModel::Load(std::istream &in,const char *fileName){
             Vec3 normal(X.x[1]*Y.x[2]-X.x[2]*Y.x[1],
                         X.x[2]*Y.x[0]-X.x[0]*Y.x[2],
                         X.x[0]*Y.x[1]-X.x[1]*Y.x[0]);
-            normal=normal*(1/normal.Norm());
+            REAL norm = normal.Norm();
+            if ( norm > .0001f )
+                normal=normal*(1/norm);
+            else
+                normal=Vec3(0,0,1);
 
             for(int j=2;j>=0;j--)
                 normals[modelFaces[i].A[j]]+=normal;
         }
     for(int i=normals.Len()-1;i>=0;i--){
-        normals[i]=normals[i]*(1/normals[i].Norm());
+        REAL norm = normals[i].Norm();
+        if ( norm > .0001f )
+            normals[i]=normals[i]*(1/norm);
+        else
+            normals[i]=Vec3(0,0,1);
     }
 
 #endif
@@ -265,6 +273,33 @@ rModel::rModel(const char *fileName)
 void rModel::Render(){
     if (!sr_glOut)
         return;
+#ifdef __EMSCRIPTEN__
+    // The cycle .mod files are tiny, and WebGL's fixed-function/client-array
+    // emulation has shown partial model corruption on the indexed draw path.
+    // Emit explicit triangles in browser builds so every vertex carries the
+    // intended texture coordinate and normal in order.
+    RenderEnd();
+    glDisable(GL_CULL_FACE);
+
+    glBegin( GL_TRIANGLES );
+    for(int i=modelFaces.Len()-1;i>=0;i--)
+    {
+        for(int j=0;j<=2;j++)
+        {
+            if ( modelTexFaces.Len() > 0 )
+            {
+                glTexCoord3fv(reinterpret_cast<REAL *>(&(texVert(modelTexFaces(i).A[j]))));
+            }
+            if ( normals.Len() > 0 )
+            {
+                glNormal3fv(reinterpret_cast<REAL *>(&(normals(modelFaces(i).A[j]))));
+            }
+            glVertex3fv(reinterpret_cast<REAL *>(&(vertices(modelFaces(i).A[j]))));
+        }
+    }
+    glEnd();
+    return;
+#endif
     if ( !displayList_.Call() )
     {
         // close pending glBegin() blocks
@@ -383,7 +418,5 @@ void rModel::ClearCache()
 
     sr_modelCache.clear();
 }
-
-
 
 
