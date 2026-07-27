@@ -1916,10 +1916,19 @@ void sg_HostGame(){
         game->Verify();
     }
 
+#ifndef __EMSCRIPTEN__
     if (sg_TalkToMaster)
     {
         nServerInfo::TellMasterAboutMe( gServerBrowser::CurrentMaster() );
     }
+#else
+    // A browser client is never reachable at an address the public master
+    // server could hand out: its only route in is a relay session opened from
+    // the browser side. Announcing is therefore pointless, and it is not free
+    // -- it is a network round trip on the way into hosting, so when it stalls
+    // the menu stalls with it, intermittently and with nothing on screen to
+    // say why. Rooms are discovered through the lobby control plane instead.
+#endif
 
     sn_SetNetState(nSERVER);
 
