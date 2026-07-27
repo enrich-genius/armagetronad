@@ -1738,11 +1738,18 @@ void init_game_camera(eGrid *grid){
 
             // se_PauseGameTimer(true);
 
-            ePlayer::PlayerConfig(i)->cam=new gCamera(grid,
-                                          ePlayer::PlayerViewport(i),
-                                          p,
-                                          ePlayer::PlayerConfig(i),
-                                          CAMERA_SMART);
+            // A spectator has no cycle, so the smart camera has nothing of its
+            // own to sit behind and the round opens looking at whichever player
+            // it picked up. Their chosen start camera is honoured instead --
+            // which is what lets a big screen host open on the whole arena.
+            ePlayer * config = ePlayer::PlayerConfig(i);
+            eCamMode startMode = config->spectate ? config->startCamera : CAMERA_SMART;
+
+            config->cam=new gCamera(grid,
+                                    ePlayer::PlayerViewport(i),
+                                    p,
+                                    config,
+                                    startMode);
 
             lastTime_gameloop=lastTimeTimestep=0;
         }
@@ -2572,6 +2579,15 @@ void net_game(){
     uMenuItemFunction inter
     (&net_menu,"$network_menu_internet_text",
      "$network_menu_internet_help",&gServerBrowser::BrowseMaster);
+
+#ifdef __EMSCRIPTEN__
+    // Listed under the browser rather than next to the native host entry: what
+    // it does is create a room and then join it, so it belongs with the other
+    // ways into a game, not with the ways of becoming a server.
+    uMenuItemFunction bigscreen
+    (&net_menu,"$network_menu_bigscreen_text",
+     "$network_menu_bigscreen_help",&gServerBrowser::HostBigScreenMatch);
+#endif
 
     gNetIdler idler;
     // rSysDep::StartNetSyncThread( &idler );

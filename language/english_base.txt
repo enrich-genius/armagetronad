@@ -1512,6 +1512,12 @@ network_menu_lan_help		Connect to a server on your local network or start a serv
 network_menu_internet_text	Online Multiplayer
 network_menu_internet_help	Connect to an internet server or start one.
 
+network_menu_bigscreen_text	Host Match (Big Screen)
+network_menu_bigscreen_help	Create a room, show the whole arena on this screen, and let players join from their phones.
+
+network_host_failed_title	Could not host
+network_host_failed_inter	The lobby service did not hand back a room. Check that the page can reach the control plane, then try again.
+
 network_opts_text		Network Setup
 network_opts_help		Configures your network preferences.
 

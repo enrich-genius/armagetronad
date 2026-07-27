@@ -34,6 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "nServerInfo.h"
 #include "nNetwork.h"
 
+#include "ePlayer.h"
+
 #include "rSysdep.h"
 #include "rScreen.h"
 #include "rConsole.h"
@@ -155,6 +157,57 @@ static int sg_ToInt( std::string const & value, int fallback )
     return parsed;
 }
 
+// One room, as the page describes it: seven tab separated fields, code first
+// and the relay's host and port last. Both the room list and hosting hand back
+// rooms in this shape, so they share the parse.
+static gServerInfo * sg_WebLobbyFromLine( std::string const & line )
+{
+    if ( line.empty() )
+        return NULL;
+
+    std::string fields[7];
+    std::istringstream cols( line );
+    for ( int i = 0; i < 7 && std::getline( cols, fields[i], '\t' ); ++i )
+        ;
+
+    if ( fields[0].empty() || fields[4].empty() || fields[5].empty() )
+        return NULL;
+
+    unsigned int relayPort = static_cast< unsigned int >( sg_ToInt( fields[6], 0 ) );
+    if ( relayPort == 0 )
+        return NULL;
+
+    gServerInfo * server = dynamic_cast< gServerInfo * >( CreateGServer() );
+    if ( !server )
+        return NULL;
+
+    server->SetWebLobby(
+        tString( fields[0].c_str() ),
+        tString( fields[1].c_str() ),
+        sg_ToInt( fields[2], 0 ),
+        sg_ToInt( fields[3], MAXCLIENTS ),
+        tString( fields[4].c_str() ),
+        tString( fields[5].c_str() ),
+        relayPort
+    );
+
+    return server;
+}
+
+// Point emscripten's socket layer at this room's relay session. Every browser
+// socket goes to one URL, so this has to be set before the connection is made
+// and re-set for each room joined.
+static void sg_UseRelay( tString const & relayUrl )
+{
+    EM_ASM({
+        var relay = UTF8ToString($0);
+        Module.websocket = Module.websocket || {};
+        Module.websocket.url = relay;
+        Module.websocket.subprotocol = 'binary';
+        window.__aaRelayUrl = relay;
+    }, static_cast< const char * >( relayUrl ) );
+}
+
 static void sg_AddWebLobbyServers()
 {
     char * rooms = emscripten_run_script_string(
@@ -171,36 +224,7 @@ static void sg_AddWebLobbyServers()
     std::istringstream lines( rooms );
     std::string line;
     while ( std::getline( lines, line ) )
-    {
-        if ( line.empty() )
-            continue;
-
-        std::string fields[7];
-        std::istringstream cols( line );
-        for ( int i = 0; i < 7 && std::getline( cols, fields[i], '\t' ); ++i )
-            ;
-
-        if ( fields[0].empty() || fields[4].empty() || fields[5].empty() )
-            continue;
-
-        unsigned int relayPort = static_cast< unsigned int >( sg_ToInt( fields[6], 0 ) );
-        if ( relayPort == 0 )
-            continue;
-
-        gServerInfo * server = dynamic_cast< gServerInfo * >( CreateGServer() );
-        if ( !server )
-            continue;
-
-        server->SetWebLobby(
-            tString( fields[0].c_str() ),
-            tString( fields[1].c_str() ),
-            sg_ToInt( fields[2], 0 ),
-            sg_ToInt( fields[3], MAXCLIENTS ),
-            tString( fields[4].c_str() ),
-            tString( fields[5].c_str() ),
-            relayPort
-        );
-    }
+        sg_WebLobbyFromLine( line );
 
     free( rooms );
 }
@@ -314,6 +338,10 @@ void gServerBrowser::BrowseSpecialMaster( nServerInfoBase * master, char const *
 {
     sg_currentMaster = master;
 
+#ifdef __EMSCRIPTEN__
+    (void)prefix; // no master server is consulted, so nothing filters on it
+#endif
+
     sg_RequestLANcontinuously = false;
 
     sn_ServerInfoCreator *cback = nServerInfo::SetCreator(&CreateGServer);
@@ -332,11 +360,22 @@ void gServerBrowser::BrowseSpecialMaster( nServerInfoBase * master, char const *
     sr_textOut=true;
 
     nServerInfo::DeleteAll();
+#ifdef __EMSCRIPTEN__
+    // The public master servers are unreachable from a browser: they speak UDP
+    // to a resolved hostname, and neither the lookup nor the datagram survives
+    // SOCKFS. GetFromMaster does not fail fast, though -- it tries each master
+    // in the list in turn, and when the last one times out it puts up a message
+    // box with a 3600 second timeout. So asking for the internet list used to
+    // stall for the better part of a minute and then land on a modal error,
+    // with the rooms that *are* reachable never getting drawn.
+    //
+    // Nothing on a master server could be joined from here anyway -- a browser
+    // reaches a game only through a relay session -- so the control plane is
+    // not a supplement to the master list here, it is the whole list.
+    sg_AddWebLobbyServers();
+#else
     nServerInfo::GetFromMaster( master, prefix );
     nServerInfo::Save();
-#ifdef __EMSCRIPTEN__
-    if ( !prefix || !*prefix )
-        sg_AddWebLobbyServers();
 #endif
 
     //  gLogo::SetBig(true);
@@ -1019,19 +1058,95 @@ void gServerMenuItem::Enter()
 #ifdef __EMSCRIPTEN__
     if ( server && server->webLobby )
     {
-        EM_ASM({
-            var relay = UTF8ToString($0);
-            Module.websocket = Module.websocket || {};
-            Module.websocket.url = relay;
-            Module.websocket.subprotocol = 'binary';
-            window.__aaRelayUrl = relay;
-        }, static_cast< const char * >( server->webLobbyRelayUrl ) );
+        sg_UseRelay( server->webLobbyRelayUrl );
     }
 #endif
 
     if (server)
         ConnectToServer(server);
 }
+
+#ifdef __EMSCRIPTEN__
+// Host a match and watch it from here.
+//
+// Hosting cannot mean natively what it means here. sn_SetNetState(nSERVER)
+// makes this tab the game server, but nothing can ever reach it: a browser has
+// no listening socket, and a relay session is always opened from the browser
+// side. The room code a host hands out resolves to the dedicated server behind
+// the relay, so a browser that made itself the server and the phones that
+// joined its code were in two different games -- which is why a hosted room
+// could look created, joinable and completely empty at the same time.
+//
+// So a hosted match is one the host joins too. This tab becomes a client like
+// any other; it just joins as a spectator with the camera pulled back, which is
+// what turns a laptop on a TV into the shared view of the match while everyone
+// else plays from their phones.
+void gServerBrowser::HostBigScreenMatch()
+{
+    // Handed over as a global rather than interpolated into the script, so a
+    // server name with a quote in it cannot become JavaScript.
+    EM_ASM({
+        window.__aaPendingRoomName = UTF8ToString($0);
+    }, static_cast< const char * >( sn_serverName ) );
+
+    char * room = emscripten_run_script_string(
+        "(function(){"
+        "  return typeof window.__aaCreateHostedRoom === 'function'"
+        "    ? window.__aaCreateHostedRoom(window.__aaPendingRoomName) : '';"
+        "})()" );
+
+    std::string line( room ? room : "" );
+    if ( room )
+        free( room );
+
+    nServerInfo::DeleteAll();
+    gServerInfo * server = sg_WebLobbyFromLine( line );
+    if ( !server )
+    {
+        tConsole::Message( "$network_host_failed_title", "$network_host_failed_inter", 10 );
+        return;
+    }
+
+    // Spectating rather than playing is the whole point of this entry, but the
+    // setting belongs to the player and outlives the match, so it is put back
+    // afterwards. Otherwise hosting once would silently make you a spectator
+    // in every game you joined after it.
+    ePlayer * lp = ePlayer::PlayerConfig( 0 );
+    bool     wasSpectating = lp ? lp->spectate : false;
+    eCamMode wasCamera     = lp ? lp->startCamera : CAMERA_SMART;
+    bool     wasFreeCam    = lp ? lp->allowCam[ CAMERA_FREE ] : false;
+
+    if ( lp )
+    {
+        lp->spectate = true;
+        // The free camera is the only one that is not welded to a cycle, and a
+        // spectator has no cycle to weld to. Started high and behind the middle
+        // of the arena, it frames the whole grid rather than one player.
+        lp->startCamera = CAMERA_FREE;
+        lp->allowCam[ CAMERA_FREE ] = true;
+
+        std::stringstream cameraSettings(
+            "CAMERA_FREE_START_X 0\n"
+            "CAMERA_FREE_START_Y -60\n"
+            "CAMERA_FREE_START_Z 200\n" );
+        tConfItemBase::LoadAll( cameraSettings );
+    }
+
+    sg_UseRelay( server->webLobbyRelayUrl );
+    ConnectToServer( server );
+
+    if ( lp )
+    {
+        lp->spectate = wasSpectating;
+        lp->startCamera = wasCamera;
+        lp->allowCam[ CAMERA_FREE ] = wasFreeCam;
+    }
+
+    EM_ASM({
+        if (typeof window.__aaCloseHostedRoom === 'function') window.__aaCloseHostedRoom();
+    });
+}
+#endif
 
 
 void gServerMenuItem::SetServer(nServerInfo *s)

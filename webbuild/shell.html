@@ -778,6 +778,27 @@
       return new URL(path, CONTROL_BASE_URL).toString();
     }
 
+    // One room as the game reads it: seven tab separated fields. Tabs and
+    // newlines are the field and record separators, so they are stripped from
+    // every value rather than escaped -- a room name cannot be allowed to
+    // invent a column.
+    function lobbyToGameLine(lobby) {
+      var relay = normalizeRelayUrl(lobby && lobby.relayUrl, false);
+      if (!lobby || !lobby.code || !relay) return '';
+      var relayUrl = new URL(relay, location.href);
+      return [
+        lobby.code,
+        lobby.name || ('Room ' + lobby.code),
+        lobby.players || 0,
+        lobby.maxPlayers || 8,
+        relay,
+        relayUrl.hostname,
+        parseInt(relayUrl.port || (relayUrl.protocol === 'wss:' ? '443' : '80'), 10) || 0
+      ].map(function (value) {
+        return String(value).replace(/[\t\r\n]/g, ' ');
+      }).join('\t');
+    }
+
     window.__aaListRoomsForGame = function () {
       var url = controlUrl('/api/lobbies');
       if (!url) return '';
@@ -788,23 +809,48 @@
         if (xhr.status < 200 || xhr.status >= 300) return '';
         var data = JSON.parse(xhr.responseText);
         if (!data || !Array.isArray(data.lobbies)) return '';
-        return data.lobbies.map(function (lobby) {
-          var relay = normalizeRelayUrl(lobby.relayUrl, false);
-          if (!lobby || !lobby.code || !relay) return '';
-          var relayUrl = new URL(relay, location.href);
-          var name = lobby.name || ('Room ' + lobby.code);
-          return [
-            lobby.code,
-            name,
-            lobby.players || 0,
-            lobby.maxPlayers || 8,
-            relay,
-            relayUrl.hostname,
-            parseInt(relayUrl.port || (relayUrl.protocol === 'wss:' ? '443' : '80'), 10) || 0
-          ].map(function (value) {
-            return String(value).replace(/[\t\r\n]/g, ' ');
-          }).join('\t');
-        }).filter(Boolean).join('\n');
+        return data.lobbies.map(lobbyToGameLine).filter(Boolean).join('\n');
+      } catch (e) {
+        return '';
+      }
+    };
+
+    // Creating a room from inside the game loop, which is not async and cannot
+    // wait on a promise. Synchronous like the listing above and for the same
+    // reason: the engine calls this and uses the answer on the next line.
+    window.__aaCreateHostedRoom = function (name) {
+      var url = controlUrl('/api/lobbies');
+      if (!url) return '';
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, false);
+        xhr.setRequestHeader('content-type', 'application/json');
+        // The name the host typed into the server settings, so a room is
+        // listed as whatever they called it. Blank falls back to the app name
+        // rather than shipping an empty entry.
+        xhr.send(JSON.stringify({
+          name: (name || '').trim() || 'Wasmageddon Match',
+          public: true,
+        }));
+        if (xhr.status < 200 || xhr.status >= 300) return '';
+        var data = JSON.parse(xhr.responseText);
+        if (!data || !data.lobby) return '';
+
+        var line = lobbyToGameLine(data.lobby);
+        if (!line) return '';
+
+        hostToken = data.hostToken;
+        hostedRoomCode = data.lobby.code;
+        startHeartbeat(hostedRoomCode);
+
+        // Up while the host waits for players: on a TV this panel is how
+        // anyone in the room joins, and it is dismissed once they have.
+        renderHostedRoomInfo(hostedRoomCode, 'Room ready. Players can join with this code.');
+        roomTitleEl.textContent = 'Your Match';
+        roomSubEl.textContent = 'Scan or enter the code to join from a phone.';
+        setRoomPanel(true);
+
+        return line;
       } catch (e) {
         return '';
       }
