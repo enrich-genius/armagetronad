@@ -1251,7 +1251,7 @@ system_settings_menu_text	System Setup
 system_settings_menu_help	Configure sound, graphics and overall appearance of \g
 
 main_menu_about_text		About
-main_menu_about_help		Shows Wasmageddon port information, source links, licensing, credits and attribution.
+main_menu_about_help		Shows Wasmagetron port information, source links, licensing, credits and attribution.
 
 main_menu_exit_text		Exit Game
 main_menu_exit_help		Goodbye!
@@ -1283,9 +1283,9 @@ game_menu_disconnect_help	Disconnects from the server and returns to the main me
 #
 #********************************************
 #********************************************
-version_info_title              About Wasmageddon
+version_info_title              About Wasmagetron
 version_info_version            Version of \g: \1
-version_info_misc_stuff         \n0xff8888Wasmageddon:0xRESETT A browser-native multiplayer grid arena.\n\nWasmageddon is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.\n\n0xff8888Source code on GitHub:0xRESETT https://github.com/enrich-genius/armagetronad\nThe exact source this build was made from.\n\n0xff8888Licensing:0xRESETT https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/LICENSES.md\nGPL-2.0-or-later, and how to reproduce this build.\n\n0xff8888Contributing:0xRESETT https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/CONTRIBUTING.md\nHelp port open-source games to WebAssembly.\n\nArmagetron Advanced is the work of its own authors and contributors. Wasmageddon is not affiliated with, nor endorsed by, the Armagetron Advanced project, Disney, or any Tron rights holder.\n\nBrought to you by Enrich Genius, a platform for ported browser games.
+version_info_misc_stuff         \n0xff8888Wasmagetron:0xRESETT A browser-native multiplayer grid arena.\n\nWasmagetron is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.\n\n0xff8888Source code on GitHub:0xRESETT https://github.com/enrich-genius/armagetronad\nThe exact source this build was made from.\n\n0xff8888Licensing:0xRESETT https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/LICENSES.md\nGPL-2.0-or-later, and how to reproduce this build.\n\n0xff8888Contributing:0xRESETT https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/CONTRIBUTING.md\nHelp port open-source games to WebAssembly.\n\nArmagetron Advanced is the work of its own authors and contributors. Wasmagetron is not affiliated with, nor endorsed by, the Armagetron Advanced project, Disney, or any Tron rights holder.\n\nBrought to you by Enrich Genius, a platform for ported browser games.
 
 path_info_user_cfg              Location of user.cfg:
 path_info_config                Configuration directories:

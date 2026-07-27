@@ -100,17 +100,17 @@ public:
         name = roomName;
         if ( name.Len() <= 1 )
         {
-            name = "Wasmgeddon Room ";
+            name = "Wasmagetron Room ";
             name << code;
         }
 
         users = playerCount;
         maxUsers_ = maxPlayerCount;
-        release_ = "Wasmgeddon";
+        release_ = "Wasmagetron";
         userNames_ = userNamesOneLine_ = "Room code ";
         userNames_ << code;
         userNamesOneLine_ << code;
-        options_ = "Hosted through the Wasmgeddon relay.";
+        options_ = "Hosted through the Wasmagetron relay.";
         url_ = relayUrl;
         ping = .001;
         score = 10000 + users;

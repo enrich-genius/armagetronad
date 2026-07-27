@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wasmageddon — Browser-Native Multiplayer Grid Arena</title>
-  <meta name="description" content="Wasmageddon is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.">
-  <meta name="keywords" content="Wasmageddon, Armagetron Advanced, grid arena, lightcycle, light cycle game, WebAssembly, WASM, browser game, multiplayer, mobile browser game">
+  <title>Wasmagetron — Browser-Native Multiplayer Grid Arena</title>
+  <meta name="description" content="Wasmagetron is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.">
+  <meta name="keywords" content="Wasmagetron, Armagetron Advanced, grid arena, lightcycle, light cycle game, WebAssembly, WASM, browser game, multiplayer, mobile browser game">
   <meta name="author" content="Enrich Genius">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://armagetronad.enrichgenius.com/">
@@ -13,12 +13,12 @@
 
   <!-- Open Graph / social sharing -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Wasmageddon — Browser-Native Multiplayer Grid Arena">
+  <meta property="og:title" content="Wasmagetron — Browser-Native Multiplayer Grid Arena">
   <meta property="og:description" content="An independent WebAssembly port built from the open-source Armagetron Advanced project, bringing multiplayer arena gameplay to desktop and mobile browsers.">
   <meta property="og:url" content="https://armagetronad.enrichgenius.com/">
-  <meta property="og:site_name" content="Wasmageddon">
+  <meta property="og:site_name" content="Wasmagetron">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Wasmageddon — Browser-Native Multiplayer Grid Arena">
+  <meta name="twitter:title" content="Wasmagetron — Browser-Native Multiplayer Grid Arena">
   <meta name="twitter:description" content="An independent WebAssembly port built from the open-source Armagetron Advanced project for desktop and mobile browsers.">
 
   <!-- Structured data for search engines -->
@@ -26,8 +26,8 @@
   {
     "@context": "https://schema.org",
     "@type": "VideoGame",
-    "name": "Wasmageddon",
-    "description": "Wasmageddon is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.",
+    "name": "Wasmagetron",
+    "description": "Wasmagetron is an independent WebAssembly port built from the open-source Armagetron Advanced project, bringing its multiplayer arena gameplay to desktop and mobile browsers.",
     "genre": ["Action", "Arcade", "Racing"],
     "applicationCategory": "Game",
     "operatingSystem": "Web browser",
@@ -133,7 +133,7 @@
     </div>
     <input id="mobile-chat-input" autocomplete="off" autocapitalize="sentences" spellcheck="false" aria-label="Chat input">
     <div id="loading">
-      <h1>Wasmageddon</h1>
+      <h1 id="app-title">Wasmagetron</h1>
       <p id="tagline">A browser-native multiplayer grid arena</p>
       <p id="port-note">Independent WebAssembly port built from the open-source Armagetron Advanced project for desktop and mobile browsers.</p>
       <div id="spinner" role="progressbar" aria-label="Loading"></div>
@@ -157,9 +157,9 @@
     </div>
     <div id="about" class="overlay" role="dialog" aria-modal="true" aria-labelledby="about-title">
       <div class="panel">
-        <h2 id="about-title">Wasmageddon</h2>
+        <h2 id="about-title">Wasmagetron</h2>
         <p class="sub">A browser-native multiplayer grid arena</p>
-        <p>Wasmageddon is an independent WebAssembly port built from the
+        <p>Wasmagetron is an independent WebAssembly port built from the
            open-source Armagetron Advanced project, bringing its multiplayer
            arena gameplay to desktop and mobile browsers.</p>
         <ul>
@@ -169,7 +169,7 @@
           <li><a href="https://github.com/enrich-genius/armagetronad/blob/release_0.2.9-wasm/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a> — help port open-source games to WebAssembly</li>
         </ul>
         <p class="muted">Armagetron Advanced is the work of its own authors and
-           contributors. Wasmageddon is not affiliated with, nor endorsed by,
+           contributors. Wasmagetron is not affiliated with, nor endorsed by,
            the Armagetron Advanced project, Disney, or any Tron rights holder.</p>
         <p class="muted">Brought to you by Enrich Genius, a platform for ported
            browser games.</p>
@@ -194,6 +194,11 @@
     </div>
   </div>
   <script>
+    var APP_NAME = 'Wasmagetron';
+    var APP_MATCH_NAME = APP_NAME + ' Match';
+    document.getElementById('app-title').textContent = APP_NAME;
+    document.getElementById('about-title').textContent = APP_NAME;
+
     // Real byte-level load progress.
     //
     // emscripten only reports progress for the data package, which is the
@@ -837,7 +842,7 @@
         // listed as whatever they called it. Blank falls back to the app name
         // rather than shipping an empty entry.
         xhr.send(JSON.stringify({
-          name: (name || '').trim() || 'Wasmageddon Match',
+          name: (name || '').trim() || APP_MATCH_NAME,
           public: true,
         }));
         if (xhr.status < 200 || xhr.status >= 300) return '';
@@ -1045,7 +1050,7 @@
       fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: 'Wasmageddon Match', public: true }),
+        body: JSON.stringify({ name: APP_MATCH_NAME, public: true }),
       }).then(function (r) {
         if (!r.ok) throw new Error('control plane returned ' + r.status);
         return r.json();

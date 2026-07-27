@@ -106,7 +106,7 @@ EOF
 
 if [[ ! -f "$OUT/var/config/settings_custom.cfg" ]]; then
   cat > "$OUT/var/config/settings_custom.cfg" <<'EOF'
-SERVER_NAME Wasmageddon
+SERVER_NAME Wasmagetron
 SERVER_PORT 4534
 MAX_CLIENTS 16
 # The browser platform has its own directory; do not advertise upstream.
