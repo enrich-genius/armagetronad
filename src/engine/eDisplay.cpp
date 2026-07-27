@@ -95,7 +95,22 @@ extern short se_bugRip;
 // passes a vertex with z-projected texture coordinates to OpenGL
 static inline void TexVertex( REAL x, REAL y, REAL h)
 {
+#ifdef __EMSCRIPTEN__
+    static const REAL maxTextureCoord = 4096;
+    REAL tx = x;
+    REAL ty = y;
+    if ( tx > maxTextureCoord )
+        tx = maxTextureCoord;
+    if ( tx < -maxTextureCoord )
+        tx = -maxTextureCoord;
+    if ( ty > maxTextureCoord )
+        ty = maxTextureCoord;
+    if ( ty < -maxTextureCoord )
+        ty = -maxTextureCoord;
+    glTexCoord2f(tx, ty);
+#else
     glTexCoord2f(x, y);
+#endif
     glVertex3f  (x, y, h);
 }
 

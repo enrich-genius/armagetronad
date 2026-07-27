@@ -1399,7 +1399,14 @@ void eCamera::Render(){
 
 
     if(CenterCockpitFixedBefore()){
+#ifdef __EMSCRIPTEN__
+        // The legacy renderer used an effectively infinite far plane. WebGL's
+        // depth buffer precision collapses with that range, most visibly when
+        // the camera gets close to walls and the near plane is adjusted.
+        vp->Perspective(fov,zNear,100000.0f);
+#else
         vp->Perspective(fov,zNear,1E+20);
+#endif
 
         /*
           gluLookAt(pos.x,
