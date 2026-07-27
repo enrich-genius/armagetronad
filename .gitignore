@@ -113,3 +113,10 @@ webbuild/HANDOFF.md
 functions/
 .wrangler/
 build-artifacts/
+
+# The dedicated server cross-build lands here. The documented procedure builds
+# it in a debian:12 container writing the tarball to the repository root, so it
+# appears in exactly this place every time somebody follows the runbook. This
+# repository commits its build output, so an untracked binary here is one
+# `git add -A` away from being published.
+/dedicated-*.tar.gz
