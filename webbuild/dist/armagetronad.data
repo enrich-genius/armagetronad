@@ -6811,16 +6811,16 @@ network_custjoin_name_text	Server Name:
 network_custjoin_name_help	The name or IP address of the server you wish to join
 
 #network host menu
-network_host_text		Host Network Game
+network_host_text		Host Game
 network_host_help		Start a server.
 
-network_host_name_text		Server Name:
+network_host_name_text		Name:
 network_host_name_help		The name of this server that should appear on the server browser. Choose it as you please; a network game will work with any name.
 
-network_host_port_text		Server Port:
+network_host_port_text		Port:
 network_host_port_help		The network port this server will listen on.
 
-network_host_host_text		Host Network Game
+network_host_host_text		Start Game
 network_host_host_help		Enter the game grid! Other players are allowed to join you via the "Connect to Server"-menu-item.
 
 bookmarks_menu              Server Bookmarks
