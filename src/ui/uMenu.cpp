@@ -50,22 +50,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-
-//! is the primary pointer a finger?
-//
-// On a touch screen the tap position decides the selection outright, so a tap
-// away from every row must never activate whatever happens to be highlighted.
-// Asked of the browser directly rather than inferred from which event types
-// have been seen: a tap can leak a compatibility mouse-move on some mobile
-// browsers, which would otherwise quietly enable the desktop behaviour.
-static bool su_CoarsePointer()
-{
-    static int coarse = -1;
-    if ( coarse < 0 )
-        coarse = emscripten_run_script_int(
-            "(navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches) ? 1 : 0" );
-    return coarse != 0;
-}
 #endif
 
 FUNCPTR  uMenu::idle(NULL);
@@ -86,7 +70,6 @@ uMenu::uMenu(const char *t="",bool exit_item)
     yOffset=0;
     selected = 10000000;
     tapSelected = false;
-    pointerSeen = false;
 }
 #endif
 
@@ -99,7 +82,6 @@ uMenu::uMenu(const tOutput &t,bool exit_item)
     yOffset=0;
     selected = 100000000;
     tapSelected = false;
-    pointerSeen = false;
 }
 
 uMenu::~uMenu(){
@@ -218,7 +200,6 @@ void uMenu::OnEnter(){
     // A menu object outlives a single visit, so make every entry start needing
     // its own select-then-activate pair rather than inheriting the last one's.
     tapSelected = false;
-    pointerSeen = false;
     yOffset=menuTop;
     REAL lastt=0;
     REAL ts=0;
@@ -544,7 +525,6 @@ void uMenu::HandleEvent( SDL_Event event )
             if ( event.button.button == SDL_BUTTON_WHEELUP ||
                  event.button.button == SDL_BUTTON_WHEELDOWN )
             {
-                pointerSeen = true;
                 if ( menuentries > 0 && sr_screenHeight > 0 && sr_screenWidth > 0 )
                 {
                     REAL x = 2 * REAL( event.button.x ) / REAL( sr_screenWidth ) - 1;
@@ -570,27 +550,7 @@ void uMenu::HandleEvent( SDL_Event event )
                 REAL y = 1 - 2 * REAL( event.button.y ) / REAL( sr_screenHeight );
                 int hit = ItemAt( x, y );
 
-                if ( hit < 0 )
-                {
-                    // Away from every row. Someone steering with the wheel
-                    // leaves the cursor wherever it happens to sit, so act on
-                    // the current selection -- but never on a touch screen,
-                    // where the tap position is the selection and a stray tap
-                    // must not activate anything.
-                    bool mouseLike = pointerSeen;
-#ifdef __EMSCRIPTEN__
-                    if ( su_CoarsePointer() )
-                        mouseLike = false;
-#endif
-                    if ( mouseLike )
-                    {
-                        SDL_Event enter = event;
-                        enter.type = SDL_KEYDOWN;
-                        enter.key.keysym.sym = SDLK_RETURN;
-                        HandleEvent( enter );
-                    }
-                }
-                else if ( hit == selected && tapSelected )
+                if ( hit == selected && tapSelected )
                 {
                     // On the selected row: activate. Touch reaches this on its
                     // second tap, having selected with the first; a mouse
@@ -614,7 +574,6 @@ void uMenu::HandleEvent( SDL_Event event )
             // Hovering a row selects it. Crucially, moving anywhere else leaves
             // the selection alone, so a cursor drifting off to the side no
             // longer drags the highlight around with it.
-            pointerSeen = true;
             if ( menuentries > 0 && sr_screenHeight > 0 && sr_screenWidth > 0 )
             {
                 REAL x = 2 * REAL( event.motion.x ) / REAL( sr_screenWidth ) - 1;

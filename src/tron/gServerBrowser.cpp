@@ -49,6 +49,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tDirectories.h"
 #include "tConfiguration.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 int gServerBrowser::lowPort  = 4534;
 
 int gServerBrowser::highPort = 4540;
@@ -106,6 +110,9 @@ nServerInfo* CreateGServer()
 class gServerMenu: public uMenu
 {
     int sortKey_;
+
+protected:
+    virtual int ItemAt( REAL x, REAL y );
 
 public:
     virtual void OnRender();
@@ -503,6 +510,11 @@ static REAL text_width=.025;
 
 static REAL shrink = .6f;
 static REAL displace = .15;
+
+int gServerMenu::ItemAt( REAL x, REAL y )
+{
+    return uMenu::ItemAt( x, ( y - displace ) / shrink );
+}
 
 void gServerMenu::Render(REAL y,
                          const tString &servername, const tString &score,
@@ -982,6 +994,11 @@ void gServerStartMenuItem::Enter()
     //  gLogo::SetSpinning(true);
     // gLogo::SetDisplayed(false);
 
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaHostMatch === 'function') window.__aaHostMatch();
+    });
+#endif
     sg_HostGameMenu();
 }
 
