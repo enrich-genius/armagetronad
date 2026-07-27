@@ -7041,6 +7041,19 @@ player_green_help		Lets you choose the green component of your colour.
 player_red_text			Red:
 player_red_help			Lets you choose the red component of your colour.
 
+player_color_presets_text	Cycle Color Presets
+player_color_presets_help	Browser color presets following RetroCycles League and ArmaNelgTron/NelgTron console color values. Values above 15 use the classic overflow behavior: the cycle and trail can render as different colors.
+player_color_preset_rcl_default_text	RCL Default: 40 15 8
+player_color_preset_tst_purple_text	TST Purple: 10 5 15
+player_color_preset_tst_ugly_text	TST Ugly: 3 15 15
+player_color_preset_tst_cyan_text	TST Cyan: 0 15 15
+player_color_preset_tst_gold_text	TST Gold: 15 15 3
+player_color_preset_fort_blue_text	Fort Blue: 4 8 15
+player_color_preset_fort_gold_text	Fort Gold: 15 15 4
+player_color_preset_overflow_gold_text	Overflow Gold: 47 40 0
+player_color_preset_overflow_cyan_text	Overflow Cyan: 0 40 47
+player_color_preset_overflow_pink_text	Overflow Pink: 47 0 31
+
 player_autologin_text		Auto Login:
 player_autologin_help		When enabled, you will automatically initiate the (usually completely optional) login procedure using the Global ID above as soon as you enter a server.
 

@@ -801,6 +801,9 @@ public:
 #include "rSysdep.h"
 extern void Render(int);
 
+#ifdef __EMSCRIPTEN__
+static void sg_DrawCycleColorPair( const int *rgb, REAL left, REAL right, REAL top, REAL bottom );
+#endif
 
 class ArmageTron_color_menuitem:public uMenuItemInt{
 protected:
@@ -809,7 +812,13 @@ protected:
 public:
     ArmageTron_color_menuitem(uMenu *m,const char *tit,
                               const char *help, int *RGB,int Me)
-            :uMenuItemInt(m,tit,help,RGB[Me],0,15),
+            :uMenuItemInt(m,tit,help,RGB[Me],0,
+#ifdef __EMSCRIPTEN__
+                          47
+#else
+                          15
+#endif
+                         ),
     rgb(RGB),me(Me) {
         m->RequestSpaceBelow(.2);
     }
@@ -834,6 +843,9 @@ public:
         uMenuItem::RenderBackground();
         if (!sr_glOut)
             return;
+#ifdef __EMSCRIPTEN__
+        sg_DrawCycleColorPair( rgb, .8f, .98f, -.8f, -.98f );
+#else
         REAL r = rgb[0]/15.0;
         REAL g = rgb[1]/15.0;
         REAL b = rgb[2]/15.0;
@@ -842,9 +854,90 @@ public:
         glColor3f(r, g, b);
         glRectf(.8,-.8,.98,-.98);
 #endif
+#endif
     }
 
 };
+
+#ifdef __EMSCRIPTEN__
+static void sg_CycleColorPreviewComponent( int value, REAL & cycle, REAL & trail )
+{
+    REAL input = value / 15.0f;
+    cycle = input;
+    trail = input;
+}
+
+static void sg_CycleColorPreview( const int *rgb, REAL *cycle, REAL *trail )
+{
+    sg_CycleColorPreviewComponent( rgb[0], cycle[0], trail[0] );
+    sg_CycleColorPreviewComponent( rgb[1], cycle[1], trail[1] );
+    sg_CycleColorPreviewComponent( rgb[2], cycle[2], trail[2] );
+
+    se_MakeColorValid( cycle[0], cycle[1], cycle[2], 1.0f );
+    se_MakeColorValid( trail[0], trail[1], trail[2], .5f );
+
+    for ( int i = 0; i < 3; ++i )
+    {
+        int wrapped = static_cast< int >( cycle[i] * 255.0f ) % 256;
+        if ( wrapped < 0 )
+            wrapped += 256;
+        cycle[i] = wrapped / 255.0f;
+
+        if ( trail[i] > 1 )
+            trail[i] = 1;
+    }
+}
+
+static void sg_DrawCycleColorPair( const int *rgb, REAL left, REAL right, REAL top, REAL bottom )
+{
+    REAL cycle[3];
+    REAL trail[3];
+    sg_CycleColorPreview( rgb, cycle, trail );
+
+    RenderEnd();
+    glColor3f( cycle[0], cycle[1], cycle[2] );
+    glRectf( left, top, ( left + right ) * .5f, bottom );
+    glColor3f( trail[0], trail[1], trail[2] );
+    glRectf( ( left + right ) * .5f, top, right, bottom );
+}
+
+class ArmageTron_color_preset_menuitem:public uMenuItemAction{
+    int *rgb;
+    int preset[3];
+public:
+    ArmageTron_color_preset_menuitem(uMenu *m,const char *tit,
+                                     const char *help, int *RGB,
+                                     int r, int g, int b)
+            :uMenuItemAction(m,tit,help),
+    rgb(RGB) {
+        preset[0] = r;
+        preset[1] = g;
+        preset[2] = b;
+    }
+
+    virtual REAL SpaceRight(){return .25;}
+
+    virtual void Enter(){
+        rgb[0] = preset[0];
+        rgb[1] = preset[1];
+        rgb[2] = preset[2];
+    }
+
+    virtual void RenderBackground(){
+        uMenuItem::RenderBackground();
+        if (!sr_glOut)
+            return;
+        sg_DrawCycleColorPair( preset, .74f, .98f, -.78f, -.98f );
+    }
+
+    virtual void Render(REAL x,REAL y,REAL alpha=1,bool selected=0){
+        uMenuItemAction::Render(x,y,alpha,selected);
+        if (!sr_glOut)
+            return;
+        sg_DrawCycleColorPair( preset, .78f, .98f, y + .025f, y - .025f );
+    }
+};
+#endif
 
 
 
@@ -859,6 +952,9 @@ void sg_PlayerMenu(int Player){
 
     uMenu camera_menu("$player_camera_text");
     uMenu chat_menu("$player_chat_text");
+#ifdef __EMSCRIPTEN__
+    uMenu color_preset_menu("$player_color_presets_text");
+#endif
     //  name.Clear();
     chat_menu.SetCenter(-.5);
 
@@ -921,6 +1017,48 @@ void sg_PlayerMenu(int Player){
     ArmageTron_color_menuitem R(&playerMenu,"$player_red_text",
                                 "$player_red_help",
                                 p->rgb,0);
+
+#ifdef __EMSCRIPTEN__
+    color_preset_menu.SetCenter(-.45);
+
+    // Browser Player Setup follows RetroCycles League's Cycle Color Picker
+    // overflow range and team presets. ArmaNelgTron/NelgTron documented the
+    // same console-value workflow earlier; keep these as plain RGB triples so
+    // adding/removing presets stays mechanical.
+    ArmageTron_color_preset_menuitem cp_rcl_default(&color_preset_menu,"$player_color_preset_rcl_default_text",
+                                                    "$player_color_presets_help",
+                                                    p->rgb,40,15,8);
+    ArmageTron_color_preset_menuitem cp_tst_purple(&color_preset_menu,"$player_color_preset_tst_purple_text",
+                                                   "$player_color_presets_help",
+                                                   p->rgb,10,5,15);
+    ArmageTron_color_preset_menuitem cp_tst_ugly(&color_preset_menu,"$player_color_preset_tst_ugly_text",
+                                                 "$player_color_presets_help",
+                                                 p->rgb,3,15,15);
+    ArmageTron_color_preset_menuitem cp_tst_cyan(&color_preset_menu,"$player_color_preset_tst_cyan_text",
+                                                 "$player_color_presets_help",
+                                                 p->rgb,0,15,15);
+    ArmageTron_color_preset_menuitem cp_tst_gold(&color_preset_menu,"$player_color_preset_tst_gold_text",
+                                                 "$player_color_presets_help",
+                                                 p->rgb,15,15,3);
+    ArmageTron_color_preset_menuitem cp_fort_blue(&color_preset_menu,"$player_color_preset_fort_blue_text",
+                                                  "$player_color_presets_help",
+                                                  p->rgb,4,8,15);
+    ArmageTron_color_preset_menuitem cp_fort_gold(&color_preset_menu,"$player_color_preset_fort_gold_text",
+                                                  "$player_color_presets_help",
+                                                  p->rgb,15,15,4);
+    ArmageTron_color_preset_menuitem cp_overflow_gold(&color_preset_menu,"$player_color_preset_overflow_gold_text",
+                                                      "$player_color_presets_help",
+                                                      p->rgb,47,40,0);
+    ArmageTron_color_preset_menuitem cp_overflow_cyan(&color_preset_menu,"$player_color_preset_overflow_cyan_text",
+                                                      "$player_color_presets_help",
+                                                      p->rgb,0,40,47);
+    ArmageTron_color_preset_menuitem cp_overflow_pink(&color_preset_menu,"$player_color_preset_overflow_pink_text",
+                                                      "$player_color_presets_help",
+                                                      p->rgb,47,0,31);
+
+    uMenuItemSubmenu cps(&playerMenu,&color_preset_menu,
+                         "$player_color_presets_help");
+#endif
 
 
 
