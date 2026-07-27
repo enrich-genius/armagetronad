@@ -8338,6 +8338,8 @@ network_host_room_text      Host Match
 network_host_room_help      Create a room and get a short code to share. Other players join with the code, no server setup needed.
 network_join_room_text      Join by Code
 network_join_room_help      Enter a short room code to join a match someone else is hosting.
+network_hosted_match_info_text About This Match
+network_hosted_match_info_help Show this hosted match's room code, QR code and share link.
 #********************************************
 #********************************************
 #
