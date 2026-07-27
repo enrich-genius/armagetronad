@@ -418,6 +418,232 @@
     setInterval(persist, 10000);
     canvas.addEventListener('click', function () { canvas.focus(); });
 
+    // Minimal QR encoder: byte mode, error correction level M, versions 1-6.
+    // Six versions carry 108 bytes, comfortably more than a join link, and staying
+    // under version 7 avoids the separate version-information blocks entirely.
+    // Returns a size x size array of 0/1, or null if the text does not fit.
+    function qrMatrix(text) {
+      var bytes = [];
+      for (var i = 0; i < text.length; i++) {
+        var c = text.charCodeAt(i);
+        if (c < 0x80) bytes.push(c);
+        else if (c < 0x800) bytes.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+        else bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      }
+
+      // [ecPerBlock, group1Blocks, group1Data, group2Blocks, group2Data]
+      var SPEC = {
+        1: [10, 1, 16, 0, 0], 2: [16, 1, 28, 0, 0], 3: [26, 1, 44, 0, 0],
+        4: [18, 2, 32, 0, 0], 5: [24, 2, 43, 0, 0], 6: [16, 4, 27, 0, 0]
+      };
+      var ALIGN = { 1: [], 2: [6,18], 3: [6,22], 4: [6,26], 5: [6,30], 6: [6,34] };
+
+      var version = 0, spec = null;
+      for (var v = 1; v <= 6; v++) {
+        var s = SPEC[v];
+        var cap = s[1] * s[2] + s[3] * s[4];
+        if (bytes.length + 2 <= cap) { version = v; spec = s; break; }
+      }
+      if (!version) return null;
+
+      var totalData = spec[1] * spec[2] + spec[3] * spec[4];
+
+      // Bit stream: mode 0100, 8-bit length (byte mode, versions 1-9), data.
+      var bits = [];
+      function put(value, len) { for (var i = len - 1; i >= 0; i--) bits.push((value >> i) & 1); }
+      put(4, 4);
+      put(bytes.length, 8);
+      for (var i = 0; i < bytes.length; i++) put(bytes[i], 8);
+      for (var i = 0; i < 4 && bits.length < totalData * 8; i++) bits.push(0);
+      while (bits.length % 8) bits.push(0);
+
+      var data = [];
+      for (var i = 0; i < bits.length; i += 8) {
+        var b = 0;
+        for (var j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+        data.push(b);
+      }
+      var padBytes = [0xec, 0x11];
+      for (var i = 0; data.length < totalData; i++) data.push(padBytes[i % 2]);
+
+      // GF(256), primitive polynomial 0x11d.
+      var EXP = new Array(512), LOG = new Array(256);
+      for (var i = 0, x = 1; i < 255; i++) {
+        EXP[i] = x; LOG[x] = i;
+        x <<= 1; if (x & 0x100) x ^= 0x11d;
+      }
+      for (var i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+      function mul(a, b) { return a === 0 || b === 0 ? 0 : EXP[LOG[a] + LOG[b]]; }
+
+      function generator(degree) {
+        var poly = [1];
+        for (var d = 0; d < degree; d++) {
+          var next = new Array(poly.length + 1).fill(0);
+          for (var i = 0; i < poly.length; i++) {
+            next[i] ^= poly[i];
+            next[i + 1] ^= mul(poly[i], EXP[d]);
+          }
+          poly = next;
+        }
+        return poly;
+      }
+      function ecFor(block, count) {
+        var gen = generator(count);
+        var rem = block.concat(new Array(count).fill(0));
+        for (var i = 0; i < block.length; i++) {
+          var factor = rem[i];
+          if (factor === 0) continue;
+          for (var j = 0; j < gen.length; j++) rem[i + j] ^= mul(gen[j], factor);
+        }
+        return rem.slice(block.length);
+      }
+
+      // Split into blocks, compute EC, then interleave.
+      var blocks = [], ecBlocks = [], offset = 0;
+      function take(n) { var b = data.slice(offset, offset + n); offset += n; return b; }
+      for (var i = 0; i < spec[1]; i++) blocks.push(take(spec[2]));
+      for (var i = 0; i < spec[3]; i++) blocks.push(take(spec[4]));
+      for (var i = 0; i < blocks.length; i++) ecBlocks.push(ecFor(blocks[i], spec[0]));
+
+      var stream = [];
+      var maxData = Math.max(spec[2], spec[4]);
+      for (var i = 0; i < maxData; i++)
+        for (var b = 0; b < blocks.length; b++)
+          if (i < blocks[b].length) stream.push(blocks[b][i]);
+      for (var i = 0; i < spec[0]; i++)
+        for (var b = 0; b < ecBlocks.length; b++) stream.push(ecBlocks[b][i]);
+
+      // Matrix scaffolding.
+      var size = version * 4 + 17;
+      var m = [], reserved = [];
+      for (var r = 0; r < size; r++) {
+        m.push(new Array(size).fill(0));
+        reserved.push(new Array(size).fill(false));
+      }
+      function set(r, c, v) { m[r][c] = v; reserved[r][c] = true; }
+
+      function finder(r0, c0) {
+        for (var r = -1; r <= 7; r++) for (var c = -1; c <= 7; c++) {
+          var rr = r0 + r, cc = c0 + c;
+          if (rr < 0 || cc < 0 || rr >= size || cc >= size) continue;
+          var inRing = (r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
+                       (c >= 0 && c <= 6 && (r === 0 || r === 6));
+          var inCore = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+          set(rr, cc, inRing || inCore ? 1 : 0);
+        }
+      }
+      finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+
+      for (var i = 8; i < size - 8; i++) {
+        var bit = i % 2 === 0 ? 1 : 0;
+        set(6, i, bit); set(i, 6, bit);
+      }
+
+      var centers = ALIGN[version];
+      for (var a = 0; a < centers.length; a++) for (var b = 0; b < centers.length; b++) {
+        var ar = centers[a], ac = centers[b];
+        if (reserved[ar][ac]) continue;                 // skips the finder corners
+        for (var r = -2; r <= 2; r++) for (var c = -2; c <= 2; c++)
+          set(ar + r, ac + c, Math.max(Math.abs(r), Math.abs(c)) !== 1 ? 1 : 0);
+      }
+
+      set(size - 8, 8, 1);                              // dark module
+      for (var i = 0; i < 9; i++) {                     // reserve format areas
+        if (!reserved[8][i]) { reserved[8][i] = true; m[8][i] = 0; }
+        if (!reserved[i][8]) { reserved[i][8] = true; m[i][8] = 0; }
+      }
+      for (var i = 0; i < 8; i++) {
+        if (!reserved[8][size - 1 - i]) { reserved[8][size - 1 - i] = true; m[8][size - 1 - i] = 0; }
+        if (!reserved[size - 1 - i][8]) { reserved[size - 1 - i][8] = true; m[size - 1 - i][8] = 0; }
+      }
+
+      // Zigzag data placement, upward then downward, skipping the timing column.
+      var idx = 0, bitPos = 0, up = true;
+      for (var right = size - 1; right > 0; right -= 2) {
+        if (right === 6) right--;
+        for (var i = 0; i < size; i++) {
+          var r = up ? size - 1 - i : i;
+          for (var c = right; c >= right - 1; c--) {
+            if (reserved[r][c]) continue;
+            var bit = 0;
+            if (idx < stream.length) bit = (stream[idx] >> (7 - bitPos)) & 1;
+            m[r][c] = bit;
+            if (++bitPos === 8) { bitPos = 0; idx++; }
+          }
+        }
+        up = !up;
+      }
+
+      function maskFn(k, r, c) {
+        switch (k) {
+          case 0: return (r + c) % 2 === 0;
+          case 1: return r % 2 === 0;
+          case 2: return c % 3 === 0;
+          case 3: return (r + c) % 3 === 0;
+          case 4: return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0;
+          case 5: return ((r * c) % 2) + ((r * c) % 3) === 0;
+          case 6: return (((r * c) % 2) + ((r * c) % 3)) % 2 === 0;
+          default: return (((r + c) % 2) + ((r * c) % 3)) % 2 === 0;
+        }
+      }
+
+      function penalty(g) {
+        var score = 0, dark = 0;
+        for (var r = 0; r < size; r++) for (var c = 0; c < size; c++) if (g[r][c]) dark++;
+        for (var r = 0; r < size; r++) {
+          for (var dir = 0; dir < 2; dir++) {
+            var run = 1;
+            for (var c = 1; c < size; c++) {
+              var a = dir ? g[c][r] : g[r][c], b = dir ? g[c - 1][r] : g[r][c - 1];
+              if (a === b) { run++; if (run === 5) score += 3; else if (run > 5) score++; }
+              else run = 1;
+            }
+          }
+        }
+        for (var r = 0; r < size - 1; r++) for (var c = 0; c < size - 1; c++)
+          if (g[r][c] === g[r][c + 1] && g[r][c] === g[r + 1][c] && g[r][c] === g[r + 1][c + 1]) score += 3;
+        var pat = [1,0,1,1,1,0,1,0,0,0,0];
+        for (var r = 0; r < size; r++) for (var c = 0; c + 11 <= size; c++) {
+          var okA = true, okB = true;
+          for (var k = 0; k < 11; k++) {
+            if (g[r][c + k] !== pat[k]) okA = false;
+            if (g[c + k][r] !== pat[k]) okB = false;
+          }
+          if (okA) score += 40;
+          if (okB) score += 40;
+        }
+        score += Math.floor(Math.abs(dark * 100 / (size * size) - 50) / 5) * 10;
+        return score;
+      }
+
+      var best = null, bestScore = Infinity, bestMask = 0;
+      for (var k = 0; k < 8; k++) {
+        var g = m.map(function (row) { return row.slice(); });
+        for (var r = 0; r < size; r++) for (var c = 0; c < size; c++)
+          if (!reserved[r][c] && maskFn(k, r, c)) g[r][c] ^= 1;
+
+        // Format information: level M is 00, then the mask, BCH(15,5), XOR 0x5412.
+        var fmt = (0 << 3) | k;
+        var rem = fmt;
+        for (var i = 0; i < 10; i++) rem = (rem << 1) ^ (((rem >> 9) & 1) * 0x537);
+        var bitsF = (((fmt << 10) | rem) ^ 0x5412);
+        for (var i = 0; i < 15; i++) {
+          var bit = (bitsF >> i) & 1;
+          if (i < 6) g[8][i] = bit;
+          else if (i < 8) g[8][i + 1] = bit;
+          else if (i === 8) g[7][8] = bit;
+          else g[14 - i][8] = bit;
+          if (i < 8) g[size - 1 - i][8] = bit;
+          else g[8][size - 15 + i] = bit;
+        }
+        g[size - 8][8] = 1;
+
+        var sc = penalty(g);
+        if (sc < bestScore) { bestScore = sc; best = g; bestMask = k; }
+      }
+      return { size: size, modules: best, version: version, mask: bestMask };
+    }
+
     // ---- Rooms: host and join via the lobby control plane --------------------
     //
     // The engine never speaks HTTP. It raises these panels from the Multiplayer
@@ -454,6 +680,55 @@
       return new URL(path, CONTROL_BASE_URL).toString();
     }
 
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+
+    function roomJoinLink(code) {
+      var explicitBase = new URLSearchParams(location.search).get('share')
+        || window.__AA_SHARE_BASE_URL
+        || window.__AA_PUBLIC_WEB_BASE_URL
+        || '';
+      var url = explicitBase ? new URL(explicitBase, location.href) : new URL(location.href);
+
+      if (explicitBase && (url.pathname === '/' || url.pathname === '')) {
+        url.pathname = location.pathname;
+      }
+
+      url.searchParams.set('room', code);
+      // A shared room link should resolve the current lobby through the control
+      // plane. A direct relay URL can be host-local, expired, or already scoped
+      // to the host's own socket.
+      url.searchParams.delete('relay');
+      url.searchParams.delete('share');
+      url.hash = '';
+      return url.toString();
+    }
+
+    function copyText(text, statusEl) {
+      function done(ok) {
+        statusEl.textContent = ok ? 'Copied link.' : 'Could not copy automatically. Select the link and copy it.';
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        return;
+      }
+
+      var input = document.createElement('input');
+      input.value = text;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.left = '-100vw';
+      document.body.appendChild(input);
+      input.select();
+      try { done(document.execCommand('copy')); }
+      catch (e) { done(false); }
+      document.body.removeChild(input);
+    }
+
     // SOCKFS holds the same object we were given at boot, so updating it here
     // steers every socket the game opens from now on.
     function useRelay(relayUrl) {
@@ -485,6 +760,33 @@
       }, 60000);
     }
 
+
+    // A phone camera is the fastest way to hand someone a lobby. Drawn locally
+    // rather than through an image service: the page is served under a strict
+    // CSP, and a join link should not be handed to a third party to render.
+    function drawQr(container, text) {
+      var qr = qrMatrix(text);
+      if (!qr) return;                      // too long to encode; the link still works
+      var quiet = 4, scale = 5;
+      var px = (qr.size + quiet * 2) * scale;
+      var canvas = document.createElement('canvas');
+      canvas.width = canvas.height = px;
+      canvas.style.width = canvas.style.height = px + 'px';
+      canvas.style.background = '#fff';
+      canvas.style.borderRadius = '6px';
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', 'QR code linking to this room');
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, px, px);
+      ctx.fillStyle = '#000';
+      for (var r = 0; r < qr.size; r++)
+        for (var c = 0; c < qr.size; c++)
+          if (qr.modules[r][c])
+            ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+      container.appendChild(canvas);
+    }
+
     window.__aaHostMatch = function () {
       roomTitleEl.textContent = 'Host Match';
       roomSubEl.textContent = 'Create a room and share the code.';
@@ -510,11 +812,18 @@
       }).then(function (data) {
         hostToken = data.hostToken;
         var code = data.lobby.code;
-        var joinLink = location.origin + location.pathname + '?room=' + encodeURIComponent(code);
+        var joinLink = roomJoinLink(code);
         roomBodyEl.innerHTML =
           '<p>Share this code:</p>' +
-          '<p class="lobby-code" style="font-size:1.8rem;letter-spacing:.25em">' + code + '</p>' +
-          '<p class="muted">Or share this link:<br>' + joinLink + '</p>';
+          '<p class="lobby-code" style="font-size:1.8rem;letter-spacing:.25em">' + escapeHtml(code) + '</p>' +
+          '<p id="room-qr"></p>' +
+          '<p class="muted">Or share this link:<br>' +
+          '<span id="room-share-link">' + escapeHtml(joinLink) + '</span> ' +
+          '<button id="room-copy-link" type="button">Copy</button></p>';
+        drawQr(document.getElementById('room-qr'), joinLink);
+        document.getElementById('room-copy-link').addEventListener('click', function () {
+          copyText(joinLink, roomStatusEl);
+        });
         roomStatusEl.textContent = useRelay(data.lobby.relayUrl)
           ? 'Room ready. Close this and start a game.'
           : 'Room created, but no usable relay URL was returned.';
