@@ -418,6 +418,7 @@
       touchControls.classList.toggle('game-active', !active);
       touchMenuButton.textContent = active ? 'BACK' : 'MENU';
       touchMenuButton.setAttribute('aria-label', active ? 'Back' : 'Menu');
+      canvas.focus();
     };
 
     // Menus swap their contents under a resting finger, so a menu activation
@@ -445,6 +446,28 @@
       });
       canvas.dispatchEvent(event);
     }
+    function shouldForwardPhysicalKey(event) {
+      if (event.defaultPrevented || event.target === canvas || event.target === mobileChatInput) return false;
+      var tag = event.target && event.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false;
+      if (event.ctrlKey || event.metaKey || event.altKey) return false;
+      return event.key === 'ArrowLeft' || event.key === 'ArrowRight' ||
+             event.key === 'ArrowUp' || event.key === 'ArrowDown' ||
+             event.key === 'Enter' || event.key === ' ' ||
+             event.key === 'Escape';
+    }
+    window.addEventListener('keydown', function (event) {
+      if (!shouldForwardPhysicalKey(event)) return;
+      event.preventDefault();
+      canvas.focus();
+      sendVirtualKey('keydown', event.key, event.code || event.key, event.keyCode || event.which || 0);
+    }, true);
+    window.addEventListener('keyup', function (event) {
+      if (!shouldForwardPhysicalKey(event)) return;
+      event.preventDefault();
+      canvas.focus();
+      sendVirtualKey('keyup', event.key, event.code || event.key, event.keyCode || event.which || 0);
+    }, true);
     function bindTouchKey(id, key, code, keyCode, throttle) {
       var button = document.getElementById(id);
       var pressed = false;

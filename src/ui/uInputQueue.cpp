@@ -315,7 +315,27 @@ bool su_GetSDLInput(SDL_Event &tEvent,REAL &time){
         // but not letter and number and sign keys
         if( tEvent.key.keysym.unicode == 0 )
         {
-            if ( tEvent.key.keysym.sym >= SDLK_ESCAPE && 
+            bool allowedControl = false;
+            switch ( tEvent.key.keysym.sym )
+            {
+            case SDLK_ESCAPE:
+            case SDLK_SPACE:
+            case SDLK_KP_ENTER:
+            case SDLK_RETURN:
+            case SDLK_UP:
+            case SDLK_DOWN:
+            case SDLK_LEFT:
+            case SDLK_RIGHT:
+            case SDLK_BACKSPACE:
+            case SDLK_DELETE:
+                allowedControl = true;
+                break;
+            default:
+                break;
+            }
+
+            if ( !allowedControl &&
+                 tEvent.key.keysym.sym >= SDLK_ESCAPE &&
                  tEvent.key.keysym.sym <= SDLK_z )
             {
                 ret = false;
@@ -358,5 +378,4 @@ int su_InputThread(void *){
     return 0;
 }
 */
-
 

@@ -56,7 +56,11 @@ static REAL se_visibilityWallDistance = .5f; // the distance the visibility targ
 static REAL se_visibilitySpeed = 40; // speed with wich the visibility targets is brought into view
 static REAL se_visibilityExtension = 1; // distance (measured in seconds, gets multiplied by speed) of the visibility targets from the watched object
 static REAL se_visibilitySidewaysSkew = .5; // extra forward component of the sideways visibility targets
+#ifdef __EMSCRIPTEN__
+static bool se_visibilityLowerWall = false; // browser renderer keeps rim walls opaque and clips/moves the camera instead
+#else
 static bool se_visibilityLowerWall = true; // flag indicating whether walls should be lowerd when they block the view
+#endif
 static bool se_visibilityLowerWallSmart = false; // same specially for the smart camera
 
 static tSettingItem<REAL> se_viscs("CAMERA_VISIBILITY_RECOVERY_SPEED", se_hitCacheSpeed );

@@ -107,4 +107,6 @@ src/.settings
 # despite *.html above, and ignore local wrangler deploy state.
 !webbuild/shell.html
 !webbuild/dist/armagetronad.html
+webbuild/README.md
+webbuild/HANDOFF.md
 .wrangler/

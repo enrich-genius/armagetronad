@@ -500,6 +500,11 @@ void gWallRim::RenderReal(const eCamera *cam){
 
 void gWallRim::OnBlocksCamera( eCamera * camera, REAL height ) const
 {
+#ifdef __EMSCRIPTEN__
+    (void)camera;
+    (void)height;
+    return;
+#else
     DestroyDisplayList();
 
     // lower the wall so it now longer blocks the view
@@ -509,6 +514,7 @@ void gWallRim::OnBlocksCamera( eCamera * camera, REAL height ) const
    }
     if ( renderHeight_ < .25 )
         renderHeight_ = .25;
+#endif
 }
 
 #endif
@@ -2702,4 +2708,3 @@ static void login_callback(){
 }
 
 static nCallbackLoginLogout sg_LoginLogout(&login_callback);
-
