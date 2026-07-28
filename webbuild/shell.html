@@ -162,6 +162,7 @@
       <div id="join-spinner" role="progressbar" aria-label="Joining match"></div>
       <p id="join-title" class="join-title">Joining Match</p>
       <p id="join-detail" class="join-detail">Opening the relay connection...</p>
+      <p id="join-elapsed" class="join-detail"></p>
     </div>
     <div id="room" class="overlay" role="dialog" aria-modal="true" aria-labelledby="room-title">
       <div class="panel">
@@ -250,17 +251,46 @@
     var joinLoadingEl = document.getElementById('join-loading');
     var joinTitleEl = document.getElementById('join-title');
     var joinDetailEl = document.getElementById('join-detail');
+    // The engine only speaks up when it changes stage, and a stage can last ten
+    // seconds -- the login gives itself five and the game state wait thirty. A
+    // caption that does not move for that long reads as a hung tab rather than
+    // a slow one, so the elapsed time is shown by the page, which keeps
+    // painting while the game loop is between frames.
+    var joinElapsedEl = document.getElementById('join-elapsed');
+    var joinTimer = null;
+    var joinStartedAt = 0;
+
+    function joinTick() {
+      var secs = Math.round((Date.now() - joinStartedAt) / 1000);
+      if (secs < 3) { joinElapsedEl.textContent = ''; return; }
+      joinElapsedEl.textContent = secs < 12
+        ? 'Still connecting\u2026 ' + secs + 's'
+        : 'Still connecting\u2026 ' + secs + 's. If this does not finish, the room '
+          + 'code may have expired \u2014 close this and try again.';
+    }
+
+    function startJoinTimer() {
+      if (joinTimer) return;            // a stage change must not restart the clock
+      joinStartedAt = Date.now();
+      joinElapsedEl.textContent = '';
+      joinTimer = setInterval(joinTick, 1000);
+    }
+
     window.__aaShowJoinLoading = function (title, detail) {
       joinTitleEl.textContent = title || 'Joining Match';
       joinDetailEl.textContent = detail || 'Opening the relay connection...';
       joinLoadingEl.classList.add('open');
+      startJoinTimer();
     };
     window.__aaUpdateJoinLoading = function (detail) {
       if (detail) joinDetailEl.textContent = detail;
       joinLoadingEl.classList.add('open');
+      startJoinTimer();
     };
     window.__aaHideJoinLoading = function () {
       joinLoadingEl.classList.remove('open');
+      if (joinTimer) { clearInterval(joinTimer); joinTimer = null; }
+      joinElapsedEl.textContent = '';
     };
     var statusEl = document.getElementById('status');
     var barEl = document.getElementById('progress-bar');

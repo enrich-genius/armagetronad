@@ -3267,7 +3267,18 @@ nConnectError sn_Connect( nAddress const & server, nLoginType loginType, nSocket
         return nDENIED;
     }
     else if (tSysTimeFloat()>=timeout || sn_GetNetState()!=nCLIENT){
-        if ( loginType == Login_All )
+        // No retry with the old protocol on the web. A browser reaches exactly
+        // one kind of server -- ours, behind the relay, speaking the current
+        // one -- so a pre-0.2.5.2 attempt cannot succeed where this one just
+        // failed. All it does is spend a second five seconds looking identical
+        // to the first, which is most of why a failed join felt like it hung
+        // rather than failed.
+#ifdef __EMSCRIPTEN__
+        bool const tryLegacyLogin = false;
+#else
+        bool const tryLegacyLogin = ( loginType == Login_All );
+#endif
+        if ( tryLegacyLogin )
         {
             return 	sn_Connect( server, Login_Pre0252, socket );
         }
