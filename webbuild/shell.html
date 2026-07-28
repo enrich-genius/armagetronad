@@ -981,6 +981,7 @@
       refreshRoomList();
       return roomListCache;
     };
+    window.__aaRefreshRoomsForGame = refreshRoomList;
 
     // Warm before anyone opens the browser, then keep it current cheaply. A
     // room's own heartbeat is 60s, so rooms cannot appear and vanish faster

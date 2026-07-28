@@ -942,8 +942,16 @@ void gServerMenuItem::RenderBackground()
 #ifndef DEDICATED
 static void Refresh()
 {
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaRefreshRoomsForGame === 'function') {
+            window.__aaRefreshRoomsForGame();
+        }
+    });
+#else
     continuePoll = true;
     nServerInfo::StartQueryAll( sg_queryType );
+#endif
 }
 #endif
 
@@ -986,6 +994,10 @@ bool gServerMenuItem::Event( SDL_Event& event )
         switch (event.key.keysym.sym)
         {
         case SDLK_p:
+#ifdef __EMSCRIPTEN__
+            st_ToDo( Refresh );
+            return true;
+#else
             continuePoll = true;
             if ( server && tSysTimeFloat() - lastPing_ > .5f )
             {
@@ -996,6 +1008,7 @@ bool gServerMenuItem::Event( SDL_Event& event )
                 server->ClearInfoFlags();
             }
             return true;
+#endif
             break;
         default:
             break;
@@ -1023,10 +1036,12 @@ bool gServerMenuItem::Event( SDL_Event& event )
             return true;
             break;
         case 'b':
+#ifndef __EMSCRIPTEN__
             if ( server && !favorite_ )
             {
                 favorite_ = gServerFavorites::AddFavorite( server );
             }
+#endif
             return true;
             break;
         default:

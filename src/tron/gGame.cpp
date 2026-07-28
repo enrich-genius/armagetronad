@@ -2494,6 +2494,13 @@ void sg_HostGameMenu(){
 
     sg_HostMenu = &net_menu;
 
+#ifdef __EMSCRIPTEN__
+    // This is a per-hosting choice, not a preference worth persisting. If it
+    // sticks on, every hosted room joins as a spectator and the dedicated
+    // server waits forever for a real player.
+    sg_hostAsSpectator = false;
+#endif
+
 #ifndef __EMSCRIPTEN__
     uMenuItemInt port(&net_menu, "$network_host_port_text",
                       "$network_host_port_help"
