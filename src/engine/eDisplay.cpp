@@ -446,6 +446,16 @@ void eGrid::display_simple( int viewer,bool floor,
         if ( !sr_alphaBlend && floorDetail > rFLOOR_TEXTURE )
             floorDetail = rFLOOR_TEXTURE;
 
+#ifdef __EMSCRIPTEN__
+        // The second WebGL floor pass uses additive blending over a huge
+        // projected plane. On browser builds it can leave faint colored bands
+        // across the grid, especially in the tutorial where the camera starts
+        // low. The single texture path keeps the same grid read without that
+        // extra pass.
+        if ( floorDetail > rFLOOR_TEXTURE )
+            floorDetail = rFLOOR_TEXTURE;
+#endif
+
         switch(floorDetail){
         case rFLOOR_OFF:
             break;
