@@ -1444,6 +1444,15 @@ network_menu_lan_help         Podlacz sie do serwera w Twojej sieci lokalnej, lu
 network_menu_internet_text    Gra Internetowa
 network_menu_internet_help    Podlacza Cie do serwera internetowego, lub tworzy taki.
 
+network_menu_hostmatch_text    Stworz pokoj
+network_menu_hostmatch_help    Tworzy pokoj, do ktorego inni moga dolaczyc kodem.
+
+network_host_spectate_text     Tylko ogladaj:
+network_host_spectate_help     Pokazuje cala arene na tym ekranie zamiast gry.
+
+network_host_failed_title      Nie udalo sie hostowac
+network_host_failed_inter      Usluga lobby nie zwrocila pokoju. Sprawdz polaczenie z usluga sterowania i sprobuj ponownie.
+
 network_opts_text             Ustawienia sieci
 network_opts_help             Konfiguruje Twoje ustawienia dotyczace sieci.
 

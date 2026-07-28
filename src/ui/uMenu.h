@@ -208,6 +208,7 @@ public:
     virtual void LeftRightRelease(){}
 
     virtual void Enter(){} // if the user presses enter/space on menu
+    virtual void TouchEnter(){ Enter(); } // selected-row tap on touch screens
 
     virtual bool Event(SDL_Event &){return false;} // if the key c is
     // pressed,mouse moved ...
@@ -307,13 +308,18 @@ public:
     }
 
     virtual void LeftRight(int lr){
+        if ( !choices.Len() )
+            return;
         select+=lr;
         if(select>=choices.Len())
-            select=choices.Len()-1;
-        if(select<0)
             select=0;
-        if (choices.Len())
-            *target=choices(select)->value;
+        if(select<0)
+            select=choices.Len()-1;
+        *target=choices(select)->value;
+    }
+
+    virtual void TouchEnter(){
+        LeftRight(1);
     }
 
     virtual void Render(REAL x,REAL y,REAL alpha=1,bool selected=0){
@@ -442,6 +448,7 @@ public:
     virtual void Render(REAL x,REAL y,REAL alpha=1,bool selected=0);
 
     virtual bool Event(SDL_Event &e);
+    virtual void TouchEnter();
 
     uMenu *MyMenu(){return menu;}
 

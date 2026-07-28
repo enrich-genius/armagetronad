@@ -103,7 +103,7 @@ tString sn_bigBrotherString;
 
 tString sn_programVersion (TRUE_ARMAGETRONAD_VERSION)    ;
 
-tString sn_serverName("Unnamed Server");
+tString sn_serverName("Grid Room");
 
 const unsigned int sn_defaultPort = 4534;
 unsigned int sn_serverPort = 4534;
@@ -3267,7 +3267,16 @@ nConnectError sn_Connect( nAddress const & server, nLoginType loginType, nSocket
         return nDENIED;
     }
     else if (tSysTimeFloat()>=timeout || sn_GetNetState()!=nCLIENT){
-        if ( loginType == Login_All )
+        // No retry with the old protocol on the web. A browser reaches exactly
+        // one kind of server: ours, behind the relay, speaking the current one.
+        // A pre-0.2.5.2 retry cannot succeed where this failed; it only makes a
+        // failed join look frozen for another five seconds.
+#ifdef __EMSCRIPTEN__
+        bool const tryLegacyLogin = false;
+#else
+        bool const tryLegacyLogin = ( loginType == Login_All );
+#endif
+        if ( tryLegacyLogin )
         {
             return 	sn_Connect( server, Login_Pre0252, socket );
         }
@@ -5566,4 +5575,3 @@ nMachineDecorator::nMachineDecorator( nMachine & machine )
 {
     Insert( machine.decorators_ );
 }
-

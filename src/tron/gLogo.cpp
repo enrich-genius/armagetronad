@@ -154,7 +154,11 @@ void gLogo::Display()
     else
     {
 #ifndef KRAWALL
+#ifdef __EMSCRIPTEN__
+        sg_LogoMPTitle = tNEW(rFileTexture)(rTextureGroups::TEX_FONT, "textures/title.png",0,0,1);
+#else
         sg_LogoMPTitle = tNEW(rFileTexture)(rTextureGroups::TEX_FONT, "textures/title.jpg",0,0,1);
+#endif
         // sg_LogoMPTitle = tNEW(rFileTexture)(rTextureGroups::TEX_FONT, sg_title,0,0,1);
 
         sg_DisplayStatus = 1;

@@ -100,17 +100,16 @@ public:
         name = roomName;
         if ( name.Len() <= 1 )
         {
-            name = "Wasmagetron Room ";
+            name = "Grid Room ";
             name << code;
         }
 
         users = playerCount;
         maxUsers_ = maxPlayerCount;
         release_ = "Wasmagetron";
-        userNames_ = userNamesOneLine_ = "Room code ";
-        userNames_ << code;
-        userNamesOneLine_ << code;
-        options_ = "Hosted through the Wasmagetron relay.";
+        userNames_ = userNamesOneLine_ = "";
+        options_ = "Room code ";
+        options_ << code << ". Hosted through the Wasmagetron relay.";
         url_ = relayUrl;
         ping = .001;
         score = 10000 + users;
@@ -321,6 +320,15 @@ public:
 
 static bool sg_RequestLANcontinuously = false;
 
+static int sg_ServerMenuFirstServerIndex()
+{
+#ifdef __EMSCRIPTEN__
+    return 0;
+#else
+    return 1;
+#endif
+}
+
 void gServerBrowser::BrowseMaster()
 {
     BrowseSpecialMaster(0,"");
@@ -450,11 +458,14 @@ void gServerBrowser::BrowseServers()
     // Nothing is lost. The listing already carries everything a query would
     // fetch -- name, player count, capacity -- so SetWebLobby marks the info
     // complete and there is nothing left to ask for.
+    continuePoll = false;
 #endif
 
     gServerMenu browser("Server Browser");
 
+#ifndef __EMSCRIPTEN__
     gServerStartMenuItem start(&browser);
+#endif
 
     /*
       while (nServerInfo::DoQueryAll(sg_simultaneous));
@@ -534,7 +545,7 @@ void gServerMenu::Update()
 {
     // get currently selected server
     gServerMenuItem *item = NULL;
-    if ( selected < items.Len() )
+    if ( selected >= 0 && selected < items.Len() )
     {
         item = dynamic_cast<gServerMenuItem*>(items(selected));
     }
@@ -552,7 +563,8 @@ void gServerMenu::Update()
     nServerInfo::CalcScoreAll();
     nServerInfo::Sort( nServerInfo::PrimaryKey( sortKey_ ) );
 
-    int mi = 1;
+    int const firstServerIndex = sg_ServerMenuFirstServerIndex();
+    int mi = firstServerIndex;
     gServerInfo *run = gServerInfo::GetFirstServer();
 	bool oneFound = false; //so we can display all if none were found
     while (run)
@@ -593,10 +605,14 @@ void gServerMenu::Update()
 		}
     }
 
-    if (items.Len() == 1)
-        selected = 1;
+    if (items.Len() <= firstServerIndex)
+    {
+        while (items.Len() <= firstServerIndex)
+            tNEW(gServerMenuItem)(this);
+        selected = firstServerIndex;
+    }
 
-    while(mi < items.Len() && items.Len() > 2)
+    while(mi < items.Len() && items.Len() > firstServerIndex + 1)
     {
         uMenuItem *it = items(items.Len()-1);
         delete it;
@@ -612,6 +628,11 @@ void gServerMenu::Update()
     {
         selected = info->menuItem->GetID();
     }
+
+    if ( selected < 0 )
+        selected = 0;
+    if ( selected >= items.Len() )
+        selected = items.Len() - 1;
 
     if (sg_RequestLANcontinuously)
     {
@@ -646,11 +667,17 @@ gServerMenu::gServerMenu(const char *title)
 
     if (items.Len() <= 0)
     {
-        selected = 1;
         tNEW(gServerMenuItem)(this);
+        selected = sg_ServerMenuFirstServerIndex();
     }
     else
+    {
+#ifdef __EMSCRIPTEN__
+        selected = items.Len() - 1;
+#else
         selected = items.Len();
+#endif
+    }
 }
 
 gServerMenu::~gServerMenu()
@@ -1103,11 +1130,31 @@ void gServerBrowser::HostBigScreenMatch()
         window.__aaPendingRoomName = UTF8ToString($0);
     }, static_cast< const char * >( sn_serverName ) );
 
+    EM_ASM({
+        if (typeof window.__aaBeginCreateHostedRoom === 'function') {
+            window.__aaBeginCreateHostedRoom(window.__aaPendingRoomName);
+        }
+    });
+
+    bool showedCreateLoading = false;
+    while ( emscripten_run_script_int(
+        "typeof window.__aaHostedRoomPending === 'function' && window.__aaHostedRoomPending() ? 1 : 0" ) )
+    {
+        if ( !showedCreateLoading && !emscripten_run_script_int(
+            "typeof window.__aaHostedRoomPanelOpen === 'function' && window.__aaHostedRoomPanelOpen() ? 1 : 0" ) )
+        {
+            EM_ASM({
+                if (typeof window.__aaShowJoinLoading === 'function') {
+                    window.__aaShowJoinLoading('Creating Match', 'Contacting the lobby...');
+                }
+            });
+            showedCreateLoading = true;
+        }
+        emscripten_sleep( 16 );
+    }
+
     char * room = emscripten_run_script_string(
-        "(function(){"
-        "  return typeof window.__aaCreateHostedRoom === 'function'"
-        "    ? window.__aaCreateHostedRoom(window.__aaPendingRoomName) : '';"
-        "})()" );
+        "typeof window.__aaHostedRoomLine === 'function' ? window.__aaHostedRoomLine() : ''" );
 
     std::string line( room ? room : "" );
     if ( room )
@@ -1117,9 +1164,33 @@ void gServerBrowser::HostBigScreenMatch()
     gServerInfo * server = sg_WebLobbyFromLine( line );
     if ( !server )
     {
+        if ( showedCreateLoading )
+        {
+            EM_ASM({
+                if (typeof window.__aaHideJoinLoading === 'function') window.__aaHideJoinLoading();
+            });
+        }
         tConsole::Message( "$network_host_failed_title", "$network_host_failed_inter", 10 );
         return;
     }
+
+    while ( emscripten_run_script_int(
+        "typeof window.__aaHostedRoomPanelOpen === 'function' && window.__aaHostedRoomPanelOpen() ? 1 : 0" ) )
+    {
+        emscripten_sleep( 16 );
+    }
+
+    if ( !emscripten_run_script_int(
+        "typeof window.__aaHostedRoomJoinRequested === 'function' && window.__aaHostedRoomJoinRequested() ? 1 : 0" ) )
+    {
+        return;
+    }
+
+    EM_ASM({
+        if (typeof window.__aaBeginHostedJoin === 'function') {
+            window.__aaBeginHostedJoin();
+        }
+    });
 
     // Spectating is opt in. A host who only watches leaves the room with no
     // player in it, and the server will not start a match for an empty grid --
@@ -1161,9 +1232,13 @@ void gServerBrowser::HostBigScreenMatch()
         lp->allowCam[ CAMERA_FREE ] = wasFreeCam;
     }
 
-    EM_ASM({
-        if (typeof window.__aaCloseHostedRoom === 'function') window.__aaCloseHostedRoom();
-    });
+    if ( emscripten_run_script_int(
+        "typeof window.__aaHostedJoinEntered === 'function' && window.__aaHostedJoinEntered() ? 1 : 0" ) )
+    {
+        EM_ASM({
+            if (typeof window.__aaCloseHostedRoom === 'function') window.__aaCloseHostedRoom();
+        });
+    }
 }
 #endif
 
@@ -1204,12 +1279,14 @@ gServerMenuItem::~gServerMenuItem()
 {
     SetServer(NULL);
 
+#ifndef __EMSCRIPTEN__
     // make sure the last entry in the array (the first menuitem)
     // stays the same
     uMenuItem* last = menu->Item(menu->NumItems()-1);
     menu->RemoveItem(last);
     menu->RemoveItem(this);
     menu->AddItem(last);
+#endif
 }
 
 
@@ -1257,5 +1334,3 @@ gServerStartMenuItem::gServerStartMenuItem(gServerMenu *men)
 gServerStartMenuItem::~gServerStartMenuItem()
 {
 }
-
-

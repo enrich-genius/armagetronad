@@ -300,7 +300,7 @@ public:
                     // loses too much depth precision with the huge far plane
                     // this renderer uses. That shows up near walls as purple
                     // tinting and see-through wall/floor z-fighting.
-                    static const REAL minWebNear = 0.05f;
+                    static const REAL minWebNear = 0.02f;
                     if ( dist < minWebNear )
                         dist = minWebNear;
 #endif
