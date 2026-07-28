@@ -605,8 +605,25 @@
 
     // Writing the config only puts it in the in-memory FS; this is what moves
     // it into IndexedDB so it survives a reload.
+    var persistInFlight = false;
+    var persistAgain = false;
     function persist() {
-      try { FS.syncfs(false, function () {}); } catch (e) {}
+      if (persistInFlight) {
+        persistAgain = true;
+        return;
+      }
+      persistInFlight = true;
+      try {
+        FS.syncfs(false, function () {
+          persistInFlight = false;
+          if (persistAgain) {
+            persistAgain = false;
+            persist();
+          }
+        });
+      } catch (e) {
+        persistInFlight = false;
+      }
     }
     // 'pagehide' rather than the deprecated unload events; it also fires when
     // the tab is merely backgrounded, so settings survive being swapped out.
