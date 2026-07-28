@@ -34,6 +34,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "uMenu.h"
 #include "tSysTime.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 bool su_mouseGrab = false;
 
 static uAction* su_allActions[uMAX_ACTIONS];
@@ -926,6 +930,12 @@ bool uActionTooltip::Help( int player )
 {
     if(player < 0 || player > uMAX_PLAYERS)
         return false;
+
+#ifdef __EMSCRIPTEN__
+    if ( emscripten_run_script_int(
+            "window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 1 : 0" ) )
+        return false;
+#endif
 
     // find most needed tooltip
     uActionTooltip * mostWanted{};

@@ -1466,9 +1466,9 @@ void eCamera::Render(){
             zNear = 0.0001f;
         }
 #ifdef __EMSCRIPTEN__
-        if ( zNear < 0.1f )
+        if ( zNear < 0.02f )
         {
-            zNear = 0.1f;
+            zNear = 0.02f;
         }
 #endif
 

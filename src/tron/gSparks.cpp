@@ -80,6 +80,13 @@ gSpark::~gSpark(){}
 bool gSpark::Timestep(REAL currentTime){
     REAL ts=currentTime-lastTime;
     lastTime=currentTime;
+#ifdef __EMSCRIPTEN__
+    // A browser stall while grinding a wall can make one spark update cover a
+    // large chunk of the arena, which renders as long ray-like streaks. Cap the
+    // visual integration step; the spark still expires on wall-clock game time.
+    if ( ts > 0.05f )
+        ts = 0.05f;
+#endif
 
     for (int i=SPARKS-1;i>=0;i--){
         x[i]+=xDot[i]*ts;

@@ -439,7 +439,9 @@ static void welcome(){
 #endif
 
     sr_textOut = textOutBack;
+#ifndef __EMSCRIPTEN__
     uMenu::Message( tOutput("$welcome_message_heading"), tOutput("$welcome_message"), 300 );
+#endif
 
     if ( !sg_ShouldStartBrowserTutorial() )
     {
@@ -470,7 +472,9 @@ static void welcome(){
     sg_delayCycle = delayCycle;
 
     sr_textOut = textOutBack;
+#ifndef __EMSCRIPTEN__
     uMenu::Message( tOutput("$welcome_message_2_heading"), tOutput("$welcome_message_2"), 300 );
+#endif
 
     sr_textOut = textOutBack;
 }
