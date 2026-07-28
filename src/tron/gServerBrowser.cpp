@@ -1216,25 +1216,33 @@ void gServerBrowser::HostBigScreenMatch()
     // The settings below belong to the player and outlive the match, so they
     // are put back afterwards. Otherwise hosting once as a spectator would
     // silently make you one in every game you joined after it.
-    ePlayer * lp = sg_hostAsSpectator ? ePlayer::PlayerConfig( 0 ) : NULL;
+    ePlayer * lp = ePlayer::PlayerConfig( 0 );
     bool     wasSpectating = lp ? lp->spectate : false;
     eCamMode wasCamera     = lp ? lp->startCamera : CAMERA_SMART;
     bool     wasFreeCam    = lp ? lp->allowCam[ CAMERA_FREE ] : false;
 
     if ( lp )
     {
-        lp->spectate = true;
-        // The free camera is the only one that is not welded to a cycle, and a
-        // spectator has no cycle to weld to. Started high and behind the middle
-        // of the arena, it frames the whole grid rather than one player.
-        lp->startCamera = CAMERA_FREE;
-        lp->allowCam[ CAMERA_FREE ] = true;
+        // Override the player's saved spectator preference for this join. A
+        // previous Watch Only attempt, or an old player setup value, otherwise
+        // makes the host enter as a spectator and the dedicated server waits
+        // forever for a real player.
+        lp->spectate = sg_hostAsSpectator;
 
-        std::stringstream cameraSettings(
-            "CAMERA_FREE_START_X 0\n"
-            "CAMERA_FREE_START_Y -60\n"
-            "CAMERA_FREE_START_Z 200\n" );
-        tConfItemBase::LoadAll( cameraSettings );
+        if ( sg_hostAsSpectator )
+        {
+            // The free camera is the only one that is not welded to a cycle,
+            // and a spectator has no cycle to weld to. Started high and behind
+            // the middle of the arena, it frames the whole grid.
+            lp->startCamera = CAMERA_FREE;
+            lp->allowCam[ CAMERA_FREE ] = true;
+
+            std::stringstream cameraSettings(
+                "CAMERA_FREE_START_X 0\n"
+                "CAMERA_FREE_START_Y -60\n"
+                "CAMERA_FREE_START_Z 200\n" );
+            tConfItemBase::LoadAll( cameraSettings );
+        }
     }
 
     sg_UseRelay( server->webLobbyRelayUrl );
