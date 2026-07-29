@@ -1509,8 +1509,17 @@ game_menu_wz_ld_help		Minimum number of seconds since the last death before the 
 network_menu_lan_text		LAN Multiplayer
 network_menu_lan_help		Connect to a server on your local network or start a server.
 
-network_menu_internet_text	Online Multiplayer
-network_menu_internet_help	Connect to an internet server or start one.
+network_menu_internet_text	Server Browser
+network_menu_internet_help	Find joinable rooms and servers.
+
+network_menu_hostmatch_text	Host Room
+network_menu_hostmatch_help	Create a room others can join by code, from a phone or another browser.
+
+network_host_spectate_text	Watch Only:
+network_host_spectate_help	Show the whole arena from this screen instead of playing.
+
+network_host_failed_title	Could not host
+network_host_failed_inter	The lobby service did not hand back a room. Check that the page can reach the control plane, then try again.
 
 network_menu_hostmatch_text	Host Match
 network_menu_hostmatch_help	Create a room others can join by code, from a phone or another browser.
@@ -1568,17 +1577,17 @@ network_custjoin_name_text	Server Name:
 network_custjoin_name_help	The name or IP address of the server you wish to join
 
 #network host menu
-network_host_text		Host Game
-network_host_help		Start a server.
+network_host_text		Host Room
+network_host_help		Create a browser room.
 
-network_host_name_text		Name:
-network_host_name_help		The name of this server that should appear on the server browser. Choose it as you please; a network game will work with any name.
+network_host_name_text		Room Name:
+network_host_name_help		The name that appears in the server browser.
 
 network_host_port_text		Port:
 network_host_port_help		The network port this server will listen on.
 
-network_host_host_text		Start Game
-network_host_host_help		Enter the game grid! Other players are allowed to join you via the "Connect to Server"-menu-item.
+network_host_host_text		Start Room
+network_host_host_help		Create the room and show its code.
 
 bookmarks_menu              Server Bookmarks
 bookmarks_menu_help         Add, edit, and connect to your server bookmarks.
@@ -2242,10 +2251,10 @@ timer_hickup                Timer hiccup of \1 seconds detected and compensated.
 
 welcome_message_heading		Welcome to \g!
 
-welcome_message		        You will now be hurled directly into a local game to get a feeling for things. It is set to a slower speed than a usual game. Your task is to make the other cycle crash into a wall. Don't panic, good luck and have fun!
+welcome_message		        Start a slower local tutorial round to get a feel for steering, walls, and crashes.
 
 welcome_message_2_heading   We hope you enjoyed it so far.
-welcome_message_2           You will now enter the regular main menu. You can access local games now via the "Play Game/"Local Game" menu path.\n\nBut the true action is to be found online, many industrious people have put up interesting servers with gameplay variations not available if you play solo.\nTo go online, select "Play Game"/"Multiplayer"/"Online Multiplayer".
+welcome_message_2           You will now enter the regular main menu. Local games live under "Play Game"/"Local Game". Online rooms and servers live under "Play Game"/"Multiplayer"/"Server Browser".
 
 #********************************************
 #********************************************
@@ -3111,7 +3120,7 @@ include english_base_notranslate.txt
 
 # Room for lost settings in translation files:
 
-network_host_room_text      Host Match
+network_host_room_text      Host Room
 network_host_room_help      Create a room and get a short code to share. Other players join with the code, no server setup needed.
 network_join_room_text      Join by Code
 network_join_room_help      Enter a short room code to join a match someone else is hosting.

@@ -58,6 +58,14 @@ bool uMenu::wrap=true;
 uMenu::QuickExit uMenu::quickexit=uMenu::QuickExit_Off;
 bool uMenu::exitToMain=false;
 
+#ifdef __EMSCRIPTEN__
+static bool su_IsTouchMenuClick()
+{
+    return emscripten_run_script_int(
+        "(typeof window.__aaTouchMenuClick === 'boolean' && window.__aaTouchMenuClick) ? 1 : 0" ) != 0;
+}
+#endif
+
 // *****************************************************
 
 #ifdef SLOPPYLOCALE
@@ -410,6 +418,14 @@ void uMenu::OnEnter(){
 void uMenu::HandleEvent( SDL_Event event )
 {
 #ifndef DEDICATED
+    if ( items.Len() <= 0 )
+        return;
+
+    if ( selected < 0 )
+        selected = 0;
+    if ( selected >= items.Len() )
+        selected = items.Len() - 1;
+
     if (!items[selected]->Event(event))
     {
         switch (event.type){
@@ -550,11 +566,25 @@ void uMenu::HandleEvent( SDL_Event event )
                 REAL y = 1 - 2 * REAL( event.button.y ) / REAL( sr_screenHeight );
                 int hit = ItemAt( x, y );
 
+                if ( hit < 0 )
+                {
+                    tapSelected = false;
+                    lastkey = tSysTimeFloat();
+                    break;
+                }
+
                 if ( hit == selected && tapSelected )
                 {
-                    // On the selected row: activate. Touch reaches this on its
-                    // second tap, having selected with the first; a mouse
-                    // reaches it immediately, because hovering already selected.
+#ifdef __EMSCRIPTEN__
+                    if ( su_IsTouchMenuClick() )
+                    {
+                        items[selected]->TouchEnter();
+                        lastkey = tSysTimeFloat();
+                        break;
+                    }
+#endif
+                    // On the selected row: activate. A mouse reaches this
+                    // immediately, because hovering already selected.
                     SDL_Event enter = event;
                     enter.type = SDL_KEYDOWN;
                     enter.key.keysym.sym = SDLK_RETURN;
@@ -1072,6 +1102,17 @@ bool uMenuItemString::Event(SDL_Event &e){
     return ret;
 #else
     return false;
+#endif
+}
+
+void uMenuItemString::TouchEnter()
+{
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaOpenMobileKeyboardForMenu === 'function') {
+            window.__aaOpenMobileKeyboardForMenu();
+        }
+    });
 #endif
 }
 

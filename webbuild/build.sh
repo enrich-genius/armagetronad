@@ -164,6 +164,11 @@ BUILD_VERSION="$(date -u +%Y%m%d%H%M%S)"
 WASM_BYTES="$(stat -c%s "$OUT/armagetronad.wasm")"
 DATA_BYTES="$(stat -c%s "$OUT/armagetronad.data" 2>/dev/null || echo 0)"
 
+cp "$HERE/assets/wasmagetron-favicon-inverse-32.png" "$OUT/wasmagetron-favicon-32.png"
+cp "$HERE/assets/wasmagetron-favicon-inverse-128.png" "$OUT/wasmagetron-favicon-128.png"
+cp "$HERE/assets/wasmagetron-favicon-inverse-256.png" "$OUT/wasmagetron-favicon-256.png"
+cp "$HERE/assets/wasmagetron-social-banner.png" "$OUT/wasmagetron-social-banner.png"
+
 sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g; \
         s/__WASM_BYTES__/${WASM_BYTES}/g; \
         s/__DATA_BYTES__/${DATA_BYTES}/g; \
@@ -201,6 +206,14 @@ cat > "$OUT/_headers" <<'HEADERS'
   Cache-Control: public, max-age=31536000, immutable
 /armagetronad.js
   Cache-Control: public, max-age=31536000, immutable
+/wasmagetron-favicon-32.png
+  Cache-Control: public, max-age=31536000, immutable
+/wasmagetron-favicon-128.png
+  Cache-Control: public, max-age=31536000, immutable
+/wasmagetron-favicon-256.png
+  Cache-Control: public, max-age=31536000, immutable
+/wasmagetron-social-banner.png
+  Cache-Control: public, max-age=31536000, immutable
 /armagetronad.html
   Cache-Control: public, max-age=0, must-revalidate
 /
@@ -212,6 +225,10 @@ SHIPPED_FILES=(
   "$OUT/armagetronad.js"
   "$OUT/armagetronad.wasm"
   "$OUT/armagetronad.data"
+  "$OUT/wasmagetron-favicon-32.png"
+  "$OUT/wasmagetron-favicon-128.png"
+  "$OUT/wasmagetron-favicon-256.png"
+  "$OUT/wasmagetron-social-banner.png"
   "$OUT/_headers"
   "$OUT/_redirects"
   "$OUT/BUILD-INFO.json"

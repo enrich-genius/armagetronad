@@ -49,6 +49,8 @@ EOF
 # shipping those would put stale objects in front of players.
 tar -czf "$TARBALL" -C "$DIST" \
   armagetronad.html armagetronad.js armagetronad.wasm armagetronad.data \
+  wasmagetron-favicon-32.png wasmagetron-favicon-128.png \
+  wasmagetron-favicon-256.png wasmagetron-social-banner.png \
   BUILD-INFO.json \
   $( [[ -f "$DIST/_headers" ]] && echo _headers ) \
   $( [[ -f "$DIST/_redirects" ]] && echo _redirects )

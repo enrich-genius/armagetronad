@@ -1121,6 +1121,15 @@ network_menu_lan_help         Conectarse o crear un servidor en la red local.
 network_menu_internet_text    Juego en internet
 network_menu_internet_help    Conectarse o crear un servidor en internet.
 
+network_menu_hostmatch_text    Crear sala
+network_menu_hostmatch_help    Crea una sala a la que otros pueden unirse con un codigo.
+
+network_host_spectate_text     Solo mirar:
+network_host_spectate_help     Muestra toda la arena desde esta pantalla en vez de jugar.
+
+network_host_failed_title      No se pudo alojar
+network_host_failed_inter      El servicio de lobby no devolvio una sala. Comprueba la conexion con el control plane e intentalo de nuevo.
+
 network_opts_text             Configuración de red
 network_opts_help             Configurar las preferencias de red.
 

@@ -943,6 +943,15 @@ network_menu_lan_help         Se connecter ou creer un serveur dans un reseau lo
 network_menu_internet_text    Jeu en reseau via Internet
 network_menu_internet_help    Se connecter a un serveur Web ou en creer un.
 
+network_menu_hostmatch_text    Creer une salle
+network_menu_hostmatch_help    Cree une salle que les autres peuvent rejoindre avec un code.
+
+network_host_spectate_text     Voir seulement:
+network_host_spectate_help     Affiche toute l arene depuis cet ecran au lieu de jouer.
+
+network_host_failed_title      Impossible d heberger
+network_host_failed_inter      Le service de lobby n a pas renvoye de salle. Verifiez la connexion au service de controle, puis reessayez.
+
 network_opts_text             Configuration: reseau
 network_opts_help             Configurer vos preferences concernant les reseaux.
 
