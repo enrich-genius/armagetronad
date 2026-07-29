@@ -1514,6 +1514,15 @@ network_menu_lan_help         Einen Server im lokalen Netz suchen oder einen neu
 network_menu_internet_text    Spiel im Internet
 network_menu_internet_help    Einen Server im Internet suchen oder einen neuen starten.
 
+network_menu_hostmatch_text    Raum erstellen
+network_menu_hostmatch_help    Erstellt einen Raum, dem andere per Code beitreten koennen.
+
+network_host_spectate_text     Nur zuschauen:
+network_host_spectate_help     Zeigt die ganze Arena von diesem Bildschirm statt mitzuspielen.
+
+network_host_failed_title      Hosting fehlgeschlagen
+network_host_failed_inter      Der Lobbydienst hat keinen Raum zurueckgegeben. Pruefe die Verbindung zur Steuerung und versuche es erneut.
+
 network_opts_text             Netzwerk konfigurieren
 network_opts_help             Einige Einstellungen und Präferenzen für das Netzwerkspiel
 

@@ -2494,6 +2494,13 @@ void sg_HostGameMenu(){
 
     sg_HostMenu = &net_menu;
 
+#ifdef __EMSCRIPTEN__
+    // This is a per-hosting choice, not a preference worth persisting. If it
+    // sticks on, every hosted room joins as a spectator and the dedicated
+    // server waits forever for a real player.
+    sg_hostAsSpectator = false;
+#endif
+
 #ifndef __EMSCRIPTEN__
     uMenuItemInt port(&net_menu, "$network_host_port_text",
                       "$network_host_port_help"
@@ -2505,6 +2512,13 @@ void sg_HostGameMenu(){
      "$network_host_name_help",
      sn_serverName);
 
+#ifdef __EMSCRIPTEN__
+    uMenuItemToggle spectate
+    (&net_menu,"$network_host_spectate_text",
+     "$network_host_spectate_help",
+     sg_hostAsSpectator);
+#endif
+
     uMenuItemFunction settings1
     (&net_menu,
      "$game_settings_menu_text",
@@ -2512,11 +2526,6 @@ void sg_HostGameMenu(){
      &GameSettingsMP);
 
 #ifdef __EMSCRIPTEN__
-    uMenuItemToggle spectate
-    (&net_menu,"$network_host_spectate_text",
-     "$network_host_spectate_help",
-     sg_hostAsSpectator);
-
     // Same place in the menu, different meaning. sg_HostGame would make this
     // tab a server nothing can connect to; hosting on the web means creating a
     // room on the shared server and joining it. The name field above still
@@ -2879,7 +2888,7 @@ void MainMenu(bool ingame){
     }
 
 #ifdef __EMSCRIPTEN__
-    if ( ingame && sg_HasHostedRoom() )
+    if ( ingame && sn_GetNetState() == nCLIENT && sg_HasHostedRoom() )
     {
         tNEW( uMenuItemFunction )( &MainMenu,
                                    "$network_hosted_match_info_text",
@@ -3029,6 +3038,7 @@ static void ingame_menu()
     try
     {
         se_ChatState( ePlayerNetID::ChatFlags_Menu, true );
+        sg_SoundPause(true, false);
         if (sn_GetNetState()==nSTANDALONE)
             se_PauseGameTimer(true);
         MainMenu(true);
@@ -3046,6 +3056,7 @@ static void ingame_menu()
 
 static void ingame_menu_cleanup()
 {
+    sg_SoundPause(false, false);
     if (sn_GetNetState()==nSTANDALONE)
         se_PauseGameTimer(false);
     se_ChatState(ePlayerNetID::ChatFlags_Menu, false);
@@ -4770,6 +4781,12 @@ static void sg_EnterGameCleanup();
 void sg_EnterGameCore( nNetState enter_state ){
     se_UserShowScores( false );
 
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaSetInGame === 'function') window.__aaSetInGame(true);
+    });
+#endif
+
     sg_RequestedDisconnection = false;
 
     sr_con.SetHeight(7);
@@ -4844,6 +4861,12 @@ void sg_EnterGameCore( nNetState enter_state ){
 
 void sg_EnterGameCleanup()
 {
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window.__aaSetInGame === 'function') window.__aaSetInGame(false);
+    });
+#endif
+
     gHighscoresBase::SaveAll();
 
     sn_SetNetState( nSTANDALONE );
