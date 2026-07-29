@@ -54,8 +54,9 @@
        progress bar sitting at 100%. */
     #loading { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; background: #0a0a12; text-align: center; padding: 1rem; transition: opacity .4s ease; }
     #loading.done { opacity: 0; pointer-events: none; }
-    /* The product mark glows and breathes while the larger data package loads. */
-    #app-mark { width: clamp(76px, 22vw, 112px); height: auto; border-radius: 24%; animation: markGlow 2.4s ease-in-out infinite; }
+    /* The trail glows and breathes while the larger data package loads.
+       overflow: visible so the drop-shadow is not clipped to the viewBox. */
+    #app-mark { width: clamp(64px, 22vw, 104px); height: auto; overflow: visible; animation: markGlow 2.4s ease-in-out infinite; }
     @keyframes markGlow {
       0%, 100% { filter: drop-shadow(0 0 3px #9184d9) drop-shadow(0 0 9px #9184d9); }
       50%      { filter: drop-shadow(0 0 6px #9184d9) drop-shadow(0 0 16px #9184d9); }
@@ -162,7 +163,11 @@
     </div>
     <input id="mobile-chat-input" autocomplete="off" autocapitalize="sentences" spellcheck="false" aria-label="Chat input">
     <div id="loading">
-      <img id="app-mark" src="wasmagetron-favicon-256.png?v=__BUILD_VERSION__" width="256" height="256" alt="Wasmagetron">
+      <svg id="app-mark" viewBox="0 0 160 160" role="img" aria-label="Wasmagetron">
+        <polyline points="18.4,31.6 18.4,91 32.7,91 32.7,128.4 47,128.4 47,98.7 63.5,98.7 63.5,69 80,69 80,98.7 96.5,98.7 96.5,128.4 113,128.4 113,80 127.3,80 127.3,31.6 141.6,31.6 145,32.6"
+          fill="none" stroke="#9184d9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="145" cy="32.6" r="7" fill="#d2cefd"/>
+      </svg>
       <h1 id="app-title">Wasmagetron</h1>
       <p id="tagline">Fast light-cycle battles in your browser</p>
       <p id="port-note">Start a match on desktop, share a code, and let friends jump in from their phones.</p>
