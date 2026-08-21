@@ -2621,6 +2621,10 @@ void net_game(){
     uMenuItemFunction hostmatch
     (&net_menu,"$network_menu_hostmatch_text",
      "$network_menu_hostmatch_help",&sg_HostGameMenu);
+
+    uMenuItemFunction joinroom
+    (&net_menu,"$network_join_room_text",
+     "$network_join_room_help",&gServerBrowser::JoinRoomByCode);
 #endif
 
     gNetIdler idler;

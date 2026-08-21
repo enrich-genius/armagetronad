@@ -61,6 +61,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "nServerInfo.h"
 #include "nSocket.h"
+#include "gServerBrowser.h"
 
 #ifndef DEDICATED
 #include "rRender.h"
@@ -914,6 +915,14 @@ int main(int argc,char **argv){
 
                     gLogo::SetBig(false);
                     gLogo::SetSpinning(true);
+
+#ifdef __EMSCRIPTEN__
+                    // A ?room= link means someone scanned or tapped their way
+                    // here to join one specific match, not to look at a menu.
+                    // Act on it once, before the main menu ever draws, so
+                    // scanning a QR code is enough on its own.
+                    gServerBrowser::JoinPendingRoomFromLink();
+#endif
 
                     sn_bigBrotherString = renderer_identification + "VER=" + sn_programVersion + "\n\n";
 
