@@ -1334,7 +1334,27 @@
         + 'Ask the host for theirs.';
     };
 
+    // Set once a code resolves to a usable relay. The engine polls
+    // __aaJoinRoomReady from outside any DOM event, the same way it polls for
+    // a hosted room, and takes the line via __aaJoinRoomLine once so a stale
+    // answer can never be replayed into a second, unrelated join.
+    var joinedRoomLine = '';
+    var joinRoomReady = false;
+
+    window.__aaJoinRoomReady = function () {
+      return joinRoomReady ? 1 : 0;
+    };
+    window.__aaJoinRoomLine = function () {
+      var line = joinedRoomLine;
+      joinedRoomLine = '';
+      joinRoomReady = false;
+      return line;
+    };
+
     window.__aaJoinMatch = function (prefill) {
+      joinedRoomLine = '';
+      joinRoomReady = false;
+
       roomTitleEl.textContent = 'Join by Code';
       roomSubEl.textContent = 'Enter the code the host shared with you.';
       roomStatusEl.textContent = '';
@@ -1368,23 +1388,44 @@
             if (!r.ok) throw new Error('control plane returned ' + r.status);
             return r.json();
           }).then(function (data) {
-            var usable = useRelay(data.lobby.relayUrl);
-            roomStatusEl.textContent = usable
-              ? 'Room found. Close this, open Server Browser, select this room, then join.'
-              : 'Room found, but no usable relay URL was returned.';
+            var line = lobbyToGameLine(data.lobby);
+            var usable = !!(useRelay(data.lobby.relayUrl) && line);
+            if (usable) {
+              // Typing or scanning a code is already the decision to join --
+              // there is no separate room to review first the way a host
+              // reviews theirs, so this hands off to the engine immediately
+              // instead of waiting for another click.
+              joinedRoomLine = line;
+              joinRoomReady = true;
+              roomStatusEl.textContent = 'Room found. Joining\u2026';
+              setRoomPanel(false);
+            } else {
+              roomStatusEl.textContent = 'Room found, but no usable relay URL was returned.';
+            }
           }).catch(function (e) {
             roomStatusEl.textContent = 'Could not join: ' + e.message;
           });
       }
       document.getElementById('room-join').addEventListener('click', attempt);
       input.addEventListener('keydown', function (e) { if (e.key === 'Enter') attempt(); });
+
+      // A scanned or shared code is already known -- submit it immediately
+      // rather than making someone re-tap what they just scanned.
+      if (prefill) attempt();
     };
 
-    // A shared link lands straight on the join panel with the code filled in.
-    (function () {
-      var room = new URLSearchParams(location.search).get('room');
-      if (room) window.addEventListener('load', function () { window.__aaJoinMatch(room.toUpperCase()); });
-    })();
+    // A shared/QR link carries a room code, but the engine is not running yet
+    // when this parses -- it cannot open a socket or show the join panel
+    // until its own main menu is reached. So this only stows the code;
+    // __aaTakePendingJoinCode lets the engine claim it once, whenever it is
+    // actually ready to act on it, which is what makes the link self-serve
+    // instead of landing on a panel someone still has to act on by hand.
+    var pendingJoinCode = new URLSearchParams(location.search).get('room');
+    window.__aaTakePendingJoinCode = function () {
+      var code = pendingJoinCode;
+      pendingJoinCode = null;
+      return code ? code.toUpperCase() : '';
+    };
 
     function anyOverlayOpen() {
       return aboutEl.classList.contains('open') ||

@@ -42,6 +42,10 @@ public:
 #ifdef __EMSCRIPTEN__
     // create a room through the lobby control plane and join it as a spectator
     static void HostBigScreenMatch();
+    // resolve a room code through the lobby control plane and join it directly
+    static void JoinRoomByCode();
+    // claim a ?room= code stashed by the page and join it, if one is waiting
+    static bool JoinPendingRoomFromLink();
 #endif
     static void ConfigurationMenu();    // browser configuration menu
 

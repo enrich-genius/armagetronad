@@ -1263,6 +1263,95 @@ void gServerBrowser::HostBigScreenMatch()
         });
     }
 }
+
+// Resolve a room code and connect to it directly. Scanning a QR code or typing
+// a code is already the whole decision -- unlike hosting, there is no separate
+// room to review first, so this does not wait for a confirming "Join" click
+// the way HostBigScreenMatch waits for the host's.
+//
+// prefill is NULL for the "Join by Code" menu entry, and a code for a ?room=
+// deep link, in which case the shell submits it immediately instead of making
+// someone re-enter what they just scanned.
+static void sg_JoinRoomCore( char const * prefill )
+{
+    EM_ASM({
+        if (typeof window.__aaJoinMatch === 'function') {
+            window.__aaJoinMatch(UTF8ToString($0));
+        }
+    }, prefill ? prefill : "" );
+
+    // Success and the panel closing happen in the same JS tick (the resolve
+    // handler sets ready then closes the panel), so checking "is the panel
+    // still open" first can observe the close and exit the loop on the very
+    // poll that would have seen ready -- losing a real success to a race
+    // against its own side effect. Checking ready unconditionally on every
+    // pass, before ever asking about the panel, closes that race.
+    bool ready = false;
+    for (;;)
+    {
+        if ( emscripten_run_script_int(
+            "typeof window.__aaJoinRoomReady === 'function' && window.__aaJoinRoomReady() ? 1 : 0" ) )
+        {
+            ready = true;
+            break;
+        }
+        if ( !emscripten_run_script_int(
+            "typeof window.__aaHostedRoomPanelOpen === 'function' && window.__aaHostedRoomPanelOpen() ? 1 : 0" ) )
+        {
+            break;
+        }
+        emscripten_sleep( 16 );
+    }
+
+    if ( !ready )
+        return;
+
+    char * room = emscripten_run_script_string(
+        "typeof window.__aaJoinRoomLine === 'function' ? window.__aaJoinRoomLine() : ''" );
+    std::string line( room ? room : "" );
+    if ( room )
+        free( room );
+
+    EM_ASM({
+        if (typeof window.__aaShowJoinLoading === 'function') {
+            window.__aaShowJoinLoading('Joining Match', 'Contacting the lobby...');
+        }
+    });
+
+    nServerInfo::DeleteAll();
+    gServerInfo * server = sg_WebLobbyFromLine( line );
+    if ( !server )
+    {
+        EM_ASM({
+            if (typeof window.__aaHideJoinLoading === 'function') window.__aaHideJoinLoading();
+        });
+        tConsole::Message( "$network_host_failed_title", "$network_host_failed_inter", 10 );
+        return;
+    }
+
+    sg_UseRelay( server->webLobbyRelayUrl );
+    ConnectToServer( server );
+}
+
+void gServerBrowser::JoinRoomByCode()
+{
+    sg_JoinRoomCore( NULL );
+}
+
+bool gServerBrowser::JoinPendingRoomFromLink()
+{
+    char * code = emscripten_run_script_string(
+        "typeof window.__aaTakePendingJoinCode === 'function' ? window.__aaTakePendingJoinCode() : ''" );
+    std::string pending( code ? code : "" );
+    if ( code )
+        free( code );
+
+    if ( pending.empty() )
+        return false;
+
+    sg_JoinRoomCore( pending.c_str() );
+    return true;
+}
 #endif
 
 
